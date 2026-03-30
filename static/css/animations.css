@@ -1,0 +1,52 @@
+/* ===== Keyframe Animations ===== */
+
+/* Board shake on wrong move */
+@keyframes board-shake {
+    0%, 100% { transform: translateX(0); }
+    15%  { transform: translateX(-7px); }
+    30%  { transform: translateX(6px); }
+    45%  { transform: translateX(-5px); }
+    60%  { transform: translateX(4px); }
+    75%  { transform: translateX(-2px); }
+}
+#board.shake { animation: board-shake 0.35s ease-out; }
+
+/* Board glow feedback */
+#board.glow-green {
+    box-shadow: var(--shadow-board), 0 0 24px 4px rgba(94,158,47,0.45),
+                inset 0 0 12px rgba(94,158,47,0.12);
+}
+#board.glow-red {
+    box-shadow: var(--shadow-board), 0 0 20px 3px rgba(204,68,68,0.35);
+}
+
+/* Board celebration pulse */
+@keyframes board-celebrate {
+    0%   { box-shadow: var(--shadow-board); }
+    20%  { box-shadow: var(--shadow-board), 0 0 35px 10px rgba(94,158,47,0.5),
+                       inset 0 0 20px rgba(94,158,47,0.15); }
+    100% { box-shadow: var(--shadow-board); }
+}
+#board.celebrate { animation: board-celebrate 0.9s ease-out; }
+
+/* Elo delta pop-in */
+@keyframes delta-pop {
+    0%   { transform: scale(0.3) translateY(6px); opacity: 0; }
+    60%  { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+#elo-delta:not(.elo-fade) { animation: delta-pop 0.35s ease-out; }
+
+/* Status bar pop */
+@keyframes status-pop {
+    from { transform: scale(0.97); opacity: 0.7; }
+    to   { transform: scale(1); opacity: 1; }
+}
+#status { animation: status-pop 0.18s ease-out; }
+
+/* History entry slide-in */
+@keyframes hist-slide {
+    from { opacity: 0; transform: scale(0.8) translateY(-6px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.hist-entry { animation: hist-slide 0.25s ease-out; }

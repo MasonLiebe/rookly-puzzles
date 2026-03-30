@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles - My Games</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+.page-title { text-align: center; margin-bottom: 1rem; }
+.page-title h1 { font-size: 1.2rem; color: var(--text-1); margin-bottom: 0.2rem; }
+.page-title p { font-size: 0.78rem; color: var(--text-3); }
+
+/* Import form */
+.import-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 1.2rem 1.5rem;
+    width: min(500px, calc(100vw - 2rem)); margin: 0 auto 1.2rem;
+}
+.import-title {
+    font-size: 0.8rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.6rem;
+}
+.import-row {
+    display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;
+}
+.import-row select, .import-row input {
+    padding: 0.4rem 0.6rem; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--bg-elevated);
+    color: var(--text-1); font-size: 0.82rem;
+}
+.import-row input { flex: 1; min-width: 120px; }
+.import-row input::placeholder { color: var(--text-3); }
+.import-btn {
+    background: var(--green); color: #fff; border: none; border-radius: var(--r-md);
+    padding: 0.4rem 1rem; font-weight: 600; font-size: 0.82rem; cursor: pointer;
+    transition: background 0.12s;
+}
+.import-btn:hover { background: #6bb032; }
+.import-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.import-status {
+    margin-top: 0.5rem; font-size: 0.75rem; min-height: 1.1em;
+}
+.import-status.success { color: var(--green-light); }
+.import-status.error { color: var(--red-light); }
+.import-status.loading { color: var(--text-3); }
+
+/* Source tabs */
+.source-tabs {
+    display: flex; gap: 0.3rem; margin-bottom: 0.75rem;
+    justify-content: center;
+}
+.source-tab {
+    padding: 0.35rem 0.8rem; border-radius: var(--r-sm);
+    background: var(--bg-elevated); color: var(--text-3);
+    font-size: 0.75rem; font-weight: 600; cursor: pointer;
+    border: 1px solid transparent; transition: all 0.12s;
+}
+.source-tab.active { background: var(--bg-surface); color: var(--text-1); border-color: var(--border); }
+.source-tab:hover:not(.active) { color: var(--text-2); }
+
+/* Game list */
+.games-list {
+    width: min(580px, calc(100vw - 2rem)); margin: 0 auto;
+}
+.game-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.55rem 0.7rem; background: var(--bg-surface);
+    border: 1px solid var(--border); border-radius: var(--r-md);
+    margin-bottom: 0.35rem; font-size: 0.78rem;
+    transition: border-color 0.12s;
+}
+.game-row:hover { border-color: var(--text-3); }
+
+.game-source {
+    width: 16px; height: 16px; flex-shrink: 0; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.55rem; font-weight: 800; color: #fff;
+}
+.game-source.lichess { background: #4a4a4a; }
+.game-source.chesscom { background: #769656; }
+
+.game-players { flex: 1; min-width: 0; }
+.game-players-line {
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: var(--text-1); font-weight: 500;
+}
+.game-rating { color: var(--text-3); font-size: 0.68rem; }
+.game-result {
+    font-weight: 700; font-size: 0.75rem; flex-shrink: 0; min-width: 36px; text-align: center;
+}
+.game-result.win { color: var(--green-light); }
+.game-result.loss { color: var(--red-light); }
+.game-result.draw { color: var(--text-3); }
+.game-meta {
+    font-size: 0.68rem; color: var(--text-3); flex-shrink: 0;
+    text-align: right; min-width: 60px;
+}
+.game-opening {
+    font-size: 0.65rem; color: var(--text-3); margin-top: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.no-games { text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 2rem; }
+.game-count { text-align: center; font-size: 0.72rem; color: var(--text-3); margin-bottom: 0.6rem; }
+
+.future-note {
+    text-align: center; margin-top: 1rem; padding: 0.8rem;
+    background: var(--bg-surface); border: 1px dashed var(--border);
+    border-radius: var(--r-md); width: min(500px, calc(100vw - 2rem)); margin-left: auto; margin-right: auto;
+}
+.future-note p { font-size: 0.72rem; color: var(--text-3); line-height: 1.4; }
+.future-note strong { color: var(--amber); }
+</style>
+</head>
+<body data-user-id="{{ user_id }}">
+
+<div id="app">
+    {% include '_nav.html' %}
+
+    <div class="page-title">
+        <h1>My Games</h1>
+        <p>Import your games from Lichess or Chess.com</p>
+    </div>
+
+    <div class="import-card">
+        <div class="import-title">Import Games</div>
+        <div class="import-row">
+            <select id="import-source">
+                <option value="lichess">Lichess</option>
+                <option value="chesscom">Chess.com</option>
+            </select>
+            <input type="text" id="import-username" placeholder="Enter username">
+            <button class="import-btn" id="import-btn">Import</button>
+        </div>
+        <div class="import-status" id="import-status"></div>
+    </div>
+
+    <div class="source-tabs" id="source-tabs">
+        <div class="source-tab active" data-source="">All</div>
+        <div class="source-tab" data-source="lichess">Lichess</div>
+        <div class="source-tab" data-source="chesscom">Chess.com</div>
+    </div>
+
+    <div class="game-count" id="game-count"></div>
+    <div class="games-list" id="games-list">
+        <div class="no-games">No games imported yet. Enter your username above to get started.</div>
+    </div>
+
+    <div class="future-note">
+        <p><strong>Coming soon:</strong> Generate custom puzzles from your own games. Find the tactics you missed and train on positions from your real play.</p>
+    </div>
+</div>
+
+<script>
+const userId = {{ user_id }};
+let currentSource = '';
+
+async function boot() {
+    const user = await (await fetch(`/api/user/${userId}`)).json();
+    const navP = document.getElementById('nav-player');
+    if (navP) navP.textContent = user.name;
+
+    document.getElementById('import-btn').onclick = doImport;
+    document.getElementById('import-username').onkeydown = e => {
+        if (e.key === 'Enter') doImport();
+    };
+
+    document.querySelectorAll('.source-tab').forEach(tab => {
+        tab.onclick = () => {
+            document.querySelectorAll('.source-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentSource = tab.dataset.source;
+            loadGames();
+        };
+    });
+
+    loadGames();
+}
+
+async function doImport() {
+    const source = document.getElementById('import-source').value;
+    const username = document.getElementById('import-username').value.trim();
+    if (!username) return;
+
+    const status = document.getElementById('import-status');
+    const btn = document.getElementById('import-btn');
+    const platformName = source === 'lichess' ? 'Lichess' : 'Chess.com';
+
+    btn.disabled = true;
+    status.className = 'import-status loading';
+    status.textContent = `Fetching games from ${platformName}...`;
+
+    try {
+        const res = await fetch(`/api/user/${userId}/import`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, username }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+            status.className = 'import-status error';
+            status.textContent = data.error;
+        } else {
+            status.className = 'import-status success';
+            status.textContent = `Imported ${data.imported} new games (${data.skipped} already existed)`;
+            loadGames();
+        }
+    } catch (err) {
+        status.className = 'import-status error';
+        status.textContent = 'Network error: ' + err.message;
+    }
+    btn.disabled = false;
+}
+
+async function loadGames() {
+    let url = `/api/user/${userId}/games?limit=500`;
+    if (currentSource) url += `&source=${currentSource}`;
+
+    const games = await (await fetch(url)).json();
+    const list = document.getElementById('games-list');
+    const count = document.getElementById('game-count');
+
+    if (games.length === 0) {
+        list.innerHTML = '<div class="no-games">No games imported yet.</div>';
+        count.textContent = '';
+        return;
+    }
+
+    count.textContent = `${games.length} game${games.length !== 1 ? 's' : ''}`;
+    list.innerHTML = '';
+
+    for (const g of games) {
+        const row = document.createElement('div');
+        row.className = 'game-row';
+
+        const sourceIcon = g.source === 'lichess' ? 'L' : 'C';
+        const sourceCls = g.source;
+
+        // Determine result relative to the source user
+        let resultCls = 'draw';
+        let resultText = g.result || '?';
+        if (g.result === '1-0') { resultCls = 'win'; }
+        else if (g.result === '0-1') { resultCls = 'loss'; }
+        else if (g.result === '1/2-1/2') { resultCls = 'draw'; resultText = 'Draw'; }
+
+        const wRating = g.white_rating ? `(${g.white_rating})` : '';
+        const bRating = g.black_rating ? `(${g.black_rating})` : '';
+        const opening = g.opening || '';
+        const tc = g.time_control || '';
+
+        row.innerHTML = `
+            <div class="game-source ${sourceCls}">${sourceIcon}</div>
+            <div class="game-players">
+                <div class="game-players-line">${g.white_name} vs ${g.black_name}</div>
+                <div class="game-opening">${opening}</div>
+            </div>
+            <div class="game-rating">${wRating} ${bRating}</div>
+            <div class="game-result ${resultCls}">${resultText}</div>
+            <div class="game-meta">${tc}</div>
+        `;
+        list.appendChild(row);
+    }
+}
+
+boot();
+</script>
+</body>
+</html>

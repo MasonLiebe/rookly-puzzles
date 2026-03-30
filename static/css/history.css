@@ -1,0 +1,52 @@
+/* ===== Puzzle History Strip ===== */
+#history {
+    width: var(--board-size);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+#history-entries {
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    padding: 3px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-elevated) transparent;
+    flex-direction: row-reverse;
+}
+#history-entries::-webkit-scrollbar { height: 3px; }
+#history-entries::-webkit-scrollbar-thumb {
+    background: var(--bg-elevated);
+    border-radius: 2px;
+}
+
+.hist-entry {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 10px;
+    border-radius: var(--r-sm);
+    background: var(--bg-surface);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    min-width: 50px;
+    border-top: 2px solid transparent;
+}
+
+.hist-entry.solved   { border-top-color: var(--green); }
+.hist-entry.mistakes { border-top-color: var(--amber); }
+.hist-entry.skipped  { border-top-color: var(--red); }
+
+.hist-icon { font-size: 0.8rem; line-height: 1; }
+.hist-entry.solved   .hist-icon { color: var(--green-light); }
+.hist-entry.mistakes .hist-icon { color: var(--amber-light); }
+.hist-entry.skipped  .hist-icon { color: var(--red-light); }
+
+.hist-rating { color: var(--text-2); font-weight: 600; }
+.hist-time   { color: var(--text-3); }
+.hist-delta  { font-weight: 600; font-size: 0.62rem; }
+.hist-delta.up   { color: var(--green-light); }
+.hist-delta.down { color: var(--red-light); }

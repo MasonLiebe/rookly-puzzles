@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles - Race</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+/* ===== Race visualization ===== */
+#race-vis {
+    width: var(--board-size);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 0.5rem 0.6rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.race-lane {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0;
+}
+.race-lane + .race-lane {
+    border-top: 1px solid var(--border);
+}
+
+/* Player info (left) */
+.lane-info {
+    flex-shrink: 0;
+    min-width: 62px;
+}
+.lane-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-1);
+    display: block;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 62px;
+}
+.lane-lives {
+    display: flex;
+    gap: 3px;
+    margin-top: 2px;
+}
+.life {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green); transition: background 0.3s, opacity 0.3s;
+}
+.life.lost { background: var(--red); opacity: 0.25; }
+
+/* Track (middle) */
+.lane-track {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    overflow-x: hidden;
+    min-height: 28px;
+    position: relative;
+}
+.lane-trail {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    transition: transform 0.3s;
+}
+
+/* Result markers */
+.marker {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    transition: transform 0.2s;
+}
+.marker.solved   { background: var(--green); }
+.marker.wrong    { background: var(--red); }
+
+@keyframes marker-pop {
+    from { transform: scale(0); }
+    50%  { transform: scale(1.4); }
+    to   { transform: scale(1); }
+}
+.marker.new { animation: marker-pop 0.25s ease-out; }
+
+/* Racer piece */
+.racer {
+    width: 28px; height: 28px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+    transition: transform 0.3s;
+}
+@keyframes racer-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+.racer.advancing { animation: racer-bounce 0.3s ease-out; }
+
+/* Score (right) */
+.lane-score {
+    flex-shrink: 0;
+    min-width: 24px;
+    text-align: right;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Timer row */
+#race-timer-row {
+    display: flex;
+    justify-content: center;
+    padding: 0.2rem 0 0;
+    border-top: 1px solid var(--border);
+    margin-top: 0.15rem;
+}
+#race-timer {
+    font-size: 0.85rem; font-weight: 700; color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+}
+#race-timer.urgent { color: var(--red-light); }
+
+/* ===== Board overlay ===== */
+#board-section { position: relative; }
+
+#board-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 50;
+    opacity: 0; transition: opacity 0.15s;
+}
+#board-overlay.show { opacity: 1; }
+#board-overlay .overlay-icon {
+    font-size: min(8rem, 30vw); font-weight: 800; line-height: 1;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+#board-overlay.correct .overlay-icon { color: var(--green-light); }
+#board-overlay.wrong   .overlay-icon { color: var(--red-light); }
+
+/* ===== Puzzle info ===== */
+#puzzle-info {
+    display: flex; gap: 1.2rem; justify-content: center; align-items: center;
+    margin-bottom: 0.6rem; font-size: 0.8rem; flex-wrap: wrap;
+}
+#puzzle-info .label { color: var(--text-3); }
+#puzzle-info .value { color: var(--text-2); font-weight: 600; }
+#color-indicator {
+    display: inline-block; width: 11px; height: 11px;
+    border-radius: 50%; border: 1.5px solid var(--border);
+    vertical-align: middle; margin-right: 2px;
+}
+#color-indicator.white { background: #f0f0f0; }
+#color-indicator.black { background: #1a1a1a; }
+
+/* ===== Results overlay ===== */
+#race-results {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; backdrop-filter: blur(4px);
+}
+.results-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 2rem 2.5rem;
+    text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    max-width: 400px; width: calc(100vw - 2rem);
+}
+.results-verdict { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.75rem; }
+.results-verdict.win  { color: var(--green-light); }
+.results-verdict.lose { color: var(--red-light); }
+.results-verdict.draw { color: var(--amber-light); }
+
+.results-lane {
+    display: flex; align-items: center; gap: 6px;
+    justify-content: center; margin-bottom: 0.4rem; flex-wrap: wrap;
+}
+.results-trail { display: flex; gap: 2px; align-items: center; }
+.results-trail .marker { width: 8px; height: 8px; }
+.results-trail .racer { width: 22px; height: 22px; }
+
+.results-stat {
+    font-size: 0.8rem; color: var(--text-2); margin-bottom: 0.15rem;
+}
+.results-stat strong { color: var(--text-1); }
+.results-stat .val { font-variant-numeric: tabular-nums; }
+
+.results-btns { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1.2rem; }
+.results-btns a {
+    padding: 0.5rem 1.2rem; border: none; border-radius: var(--r-md);
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;
+    transition: transform 0.1s;
+}
+.results-btns a:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--green); color: #fff; }
+.btn-secondary { background: var(--bg-elevated); color: var(--text-2); }
+.results-rule { font-size: 0.68rem; color: var(--text-3); margin-top: 0.6rem; }
+</style>
+</head>
+<body data-race-id="{{ race_id }}" data-user-id="{{ user_id }}">
+
+<div id="app">
+    <div id="race-vis">
+        <div id="race-lanes"></div>
+        <div id="race-timer-row">
+            <div id="race-timer"></div>
+        </div>
+    </div>
+
+    <div id="puzzle-info">
+        <span><span class="label">Puzzle </span><span class="value" id="rating">---</span></span>
+        <span><span class="label">Play as </span><span id="color-indicator" class="white"></span></span>
+    </div>
+
+    <div id="board-section">
+        <div id="board"></div>
+        <div id="board-overlay"><span class="overlay-icon"></span></div>
+    </div>
+
+    <div id="status" class="status-info">Loading race...</div>
+    <div id="sub-status">
+        <span id="move-count"></span>
+        <span id="timer"></span>
+    </div>
+</div>
+
+<div id="race-results" class="hidden">
+    <div class="results-card" id="results-card"></div>
+</div>
+
+<div id="promotion-overlay" class="hidden">
+    <div id="promotion-picker"></div>
+</div>
+
+<script src="/static/chess.min.js"></script>
+<script type="module" src="/static/js/race.js"></script>
+</body>
+</html>

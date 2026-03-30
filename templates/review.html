@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles - Review</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+.page-header { text-align: center; margin-bottom: 0.8rem; }
+.page-header h1 { font-size: 1.3rem; margin-bottom: 0.2rem; }
+.page-header p { color: var(--text-3); font-size: 0.8rem; }
+
+/* Analysis trigger */
+.analyze-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 1.2rem 1.5rem;
+    width: min(500px, calc(100vw - 2rem)); margin: 0 auto 1.2rem;
+    text-align: center;
+}
+.analyze-title { font-size: 0.85rem; font-weight: 700; color: var(--text-1); margin-bottom: 0.5rem; }
+.analyze-stats { font-size: 0.75rem; color: var(--text-3); margin-bottom: 0.7rem; line-height: 1.6; }
+.analyze-stats .num { color: var(--text-1); font-weight: 700; }
+.analyze-btn {
+    background: var(--green); color: #fff; border: none; border-radius: var(--r-md);
+    padding: 0.5rem 1.5rem; font-weight: 600; font-size: 0.82rem; cursor: pointer;
+    transition: background 0.12s;
+}
+.analyze-btn:hover { background: #6bb032; }
+.analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.analyze-progress {
+    margin-top: 0.5rem; font-size: 0.72rem; color: var(--text-3); min-height: 1.2em;
+}
+.analyze-progress.active { color: var(--amber); }
+
+/* No games message */
+.no-games-msg {
+    text-align: center; color: var(--text-3); font-size: 0.82rem;
+    padding: 2rem; line-height: 1.5;
+}
+.no-games-msg a { color: var(--green); text-decoration: none; }
+.no-games-msg a:hover { text-decoration: underline; }
+
+/* Score HUD */
+.review-hud {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1.5rem; width: var(--board-size); margin: 0 auto 0.5rem;
+}
+.hud-block { text-align: center; }
+.hud-big { font-size: 1.8rem; font-weight: 800; color: var(--text-1); font-variant-numeric: tabular-nums; line-height: 1; }
+.hud-label { font-size: 0.6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.hud-big.correct-color { color: var(--green-light); }
+.hud-big.wrong-color { color: var(--red-light); }
+
+/* Board wrapper with SVG overlay */
+.board-wrap {
+    position: relative; width: var(--board-size); height: var(--board-size);
+    margin: 0 auto 0.6rem;
+}
+.board-wrap #review-board {
+    display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+    width: 100%; height: 100%;
+    border-radius: var(--r-sm); overflow: hidden; box-shadow: var(--shadow-board);
+}
+#arrow-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 10;
+}
+#arrow-svg .arrow-hit {
+    pointer-events: auto; cursor: pointer;
+    fill: transparent; stroke: transparent;
+}
+#arrow-svg .arrow-hit:hover + .arrow-line { opacity: 1; }
+.arrow-line { transition: opacity 0.12s; }
+
+/* Arrow colors */
+.arrow-a .arrow-line { stroke: var(--amber); fill: var(--amber); opacity: 0.75; }
+.arrow-b .arrow-line { stroke: var(--blue); fill: var(--blue); opacity: 0.75; }
+.arrow-a .arrow-hit:hover + .arrow-line,
+.arrow-b .arrow-hit:hover + .arrow-line { opacity: 1; }
+
+/* Revealed state */
+.arrow-best .arrow-line { stroke: var(--green-light); fill: var(--green-light); opacity: 0.85; }
+.arrow-yours .arrow-line { stroke: var(--red-light); fill: var(--red-light); opacity: 0.6; }
+
+/* Choice buttons below board */
+.choice-row {
+    display: flex; gap: 0.6rem; justify-content: center;
+    width: var(--board-size); margin: 0 auto 0.8rem;
+}
+.choice-btn {
+    flex: 1; padding: 0.6rem 1rem; border-radius: var(--r-md);
+    font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.12s;
+    display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+.choice-btn .arrow-dot {
+    width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0;
+}
+.choice-a { background: rgba(200, 148, 32, 0.15); color: var(--amber); border-color: var(--amber); }
+.choice-a .arrow-dot { background: var(--amber); }
+.choice-a:hover { background: rgba(200, 148, 32, 0.25); }
+.choice-b { background: rgba(74, 143, 212, 0.15); color: var(--blue); border-color: var(--blue); }
+.choice-b .arrow-dot { background: var(--blue); }
+.choice-b:hover { background: rgba(74, 143, 212, 0.25); }
+.choice-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Moment info */
+.moment-info {
+    text-align: center; font-size: 0.78rem; color: var(--text-3);
+    width: var(--board-size); margin: 0 auto 0.5rem; line-height: 1.5;
+}
+.moment-info .game-label { color: var(--text-2); font-weight: 600; }
+.moment-info .move-num { color: var(--text-2); }
+.moment-info .moment-tag {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--r-sm);
+    font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.moment-tag.blunder { background: var(--red-bg); color: var(--red-light); }
+.moment-tag.mistake { background: var(--amber-bg); color: var(--amber-light); }
+
+/* Result reveal */
+.reveal-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 1rem 1.5rem; width: var(--board-size); margin: 0 auto 0.8rem;
+    text-align: center;
+}
+.reveal-card.correct-card { border-color: var(--green); }
+.reveal-card.wrong-card { border-color: var(--red); }
+.reveal-verdict { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.3rem; }
+.reveal-verdict.correct { color: var(--green-light); }
+.reveal-verdict.wrong { color: var(--red-light); }
+.reveal-explain { font-size: 0.78rem; color: var(--text-3); line-height: 1.4; margin-bottom: 0.5rem; }
+.reveal-explain .eval { font-weight: 700; color: var(--text-2); }
+.next-btn {
+    background: var(--green); color: #fff; border: none; border-radius: var(--r-md);
+    padding: 0.5rem 1.5rem; font-weight: 600; font-size: 0.82rem; cursor: pointer;
+}
+.next-btn:hover { background: #6bb032; }
+
+/* Done card */
+.done-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 2rem; width: min(500px, calc(100vw - 2rem)); margin: 2rem auto;
+    text-align: center;
+}
+.done-card h2 { font-size: 1.2rem; color: var(--text-1); margin-bottom: 0.5rem; }
+.done-big { font-size: 3rem; font-weight: 800; color: var(--green-light); line-height: 1.1; }
+.done-sub { font-size: 0.8rem; color: var(--text-3); margin-bottom: 1rem; }
+.done-btns { display: flex; gap: 0.5rem; justify-content: center; }
+.done-btns a, .done-btns button {
+    padding: 0.5rem 1.2rem; border: none; border-radius: var(--r-md);
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none;
+}
+.btn-primary { background: var(--green); color: #fff; }
+.btn-secondary { background: var(--bg-elevated); color: var(--text-2); }
+
+.hidden { display: none !important; }
+
+/* Square styling (matching board.css) */
+.rv-square {
+    position: relative; display: flex; align-items: center; justify-content: center;
+    user-select: none; -webkit-user-select: none;
+}
+.rv-square.light { background: var(--sq-light); }
+.rv-square.dark { background: var(--sq-dark); }
+.rv-square .piece {
+    width: 87%; height: 87%; pointer-events: none; z-index: 1;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
+}
+.rv-square .coord {
+    position: absolute; font-size: 0.55rem; font-weight: 700;
+    pointer-events: none; z-index: 3; line-height: 1; opacity: 0.7;
+}
+.rv-square .coord-rank { top: 2px; left: 3px; }
+.rv-square .coord-file { bottom: 2px; right: 3px; }
+.rv-square.light .coord { color: var(--sq-dark); }
+.rv-square.dark .coord { color: var(--sq-light); }
+</style>
+</head>
+<body data-user-id="{{ user_id }}">
+
+<div id="app">
+    {% include '_nav.html' %}
+
+    <div class="page-header">
+        <h1>Review Your Games</h1>
+        <p>Find the best move in positions where you blundered</p>
+    </div>
+
+    <!-- Step 1: Analyze -->
+    <div id="step-analyze">
+        <div class="analyze-card" id="analyze-card">
+            <div class="analyze-title">Game Analysis</div>
+            <div class="analyze-stats" id="analyze-stats">Loading...</div>
+            <button class="analyze-btn" id="analyze-btn" style="display:none">Analyze Games</button>
+            <div class="analyze-progress" id="analyze-progress"></div>
+        </div>
+    </div>
+
+    <!-- Step 2: Quiz -->
+    <div id="step-quiz" class="hidden">
+        <div class="review-hud">
+            <div class="hud-block">
+                <div class="hud-big correct-color" id="hud-correct">0</div>
+                <div class="hud-label">Correct</div>
+            </div>
+            <div class="hud-block">
+                <div class="hud-big" id="hud-progress">1 / ?</div>
+                <div class="hud-label">Position</div>
+            </div>
+            <div class="hud-block">
+                <div class="hud-big wrong-color" id="hud-wrong">0</div>
+                <div class="hud-label">Wrong</div>
+            </div>
+        </div>
+
+        <div class="moment-info" id="moment-info"></div>
+
+        <div class="board-wrap" id="board-wrap">
+            <div id="review-board"></div>
+            <svg id="arrow-svg" viewBox="0 0 800 800"></svg>
+        </div>
+
+        <div class="choice-row" id="choice-row">
+            <button class="choice-btn choice-a" id="choice-a" disabled>
+                <span class="arrow-dot"></span> <span>Move A</span>
+            </button>
+            <button class="choice-btn choice-b" id="choice-b" disabled>
+                <span class="arrow-dot"></span> <span>Move B</span>
+            </button>
+        </div>
+
+        <div id="reveal-section" class="hidden">
+            <div class="reveal-card" id="reveal-card">
+                <div class="reveal-verdict" id="reveal-verdict"></div>
+                <div class="reveal-explain" id="reveal-explain"></div>
+                <button class="next-btn" id="next-btn">Next Position</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div id="step-done" class="hidden"></div>
+</div>
+
+<script src="/static/chess.min.js"></script>
+<script>
+const userId = parseInt(document.body.dataset.userId);
+let moments = [];
+let currentIdx = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let currentMoment = null;
+let shuffledMoves = []; // [{move, isBest}]
+let pollTimer = null;
+
+// ---- Boot ----
+async function boot() {
+    const user = await (await fetch(`/api/user/${userId}`)).json();
+    const navP = document.getElementById('nav-player');
+    if (navP) navP.textContent = user.name;
+
+    await checkStatus();
+}
+
+// ---- Analysis status ----
+async function checkStatus() {
+    const status = await (await fetch(`/api/user/${userId}/analysis-status`)).json();
+    const stats = document.getElementById('analyze-stats');
+    const btn = document.getElementById('analyze-btn');
+    const progress = document.getElementById('analyze-progress');
+
+    if (status.total_games === 0) {
+        stats.innerHTML = `No games imported yet. <a href="/games/${userId}" style="color:var(--green)">Import games</a> first.`;
+        btn.style.display = 'none';
+        return;
+    }
+
+    const unanalyzed = status.total_games - status.analyzed - status.errors;
+    stats.innerHTML = `
+        <span class="num">${status.total_games}</span> games imported &middot;
+        <span class="num">${status.analyzed}</span> analyzed &middot;
+        <span class="num">${status.total_moments}</span> moments found
+    `;
+
+    if (status.in_progress) {
+        btn.style.display = 'none';
+        progress.className = 'analyze-progress active';
+        progress.textContent = `Analyzing... (${status.analyzing + status.pending} remaining)`;
+        pollTimer = setTimeout(checkStatus, 2000);
+        return;
+    }
+
+    if (unanalyzed > 0) {
+        btn.style.display = '';
+        btn.textContent = `Analyze ${Math.min(unanalyzed, 10)} Games`;
+        btn.onclick = startAnalysis;
+    } else {
+        btn.style.display = 'none';
+    }
+
+    if (status.total_moments > 0) {
+        await loadMoments();
+    } else if (status.analyzed > 0) {
+        progress.textContent = 'No blunders found in analyzed games. Nice play!';
+    }
+}
+
+async function startAnalysis() {
+    const btn = document.getElementById('analyze-btn');
+    const progress = document.getElementById('analyze-progress');
+    btn.disabled = true;
+    progress.className = 'analyze-progress active';
+    progress.textContent = 'Starting analysis...';
+
+    await fetch(`/api/user/${userId}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 10 }),
+    });
+
+    pollTimer = setTimeout(checkStatus, 1500);
+}
+
+// ---- Load moments ----
+async function loadMoments() {
+    moments = await (await fetch(`/api/user/${userId}/moments?limit=50`)).json();
+    if (moments.length === 0) {
+        document.getElementById('analyze-progress').textContent = 'All moments reviewed! Analyze more games or reset.';
+        return;
+    }
+    currentIdx = 0;
+    correctCount = 0;
+    wrongCount = 0;
+    document.getElementById('step-analyze').classList.add('hidden');
+    document.getElementById('step-quiz').classList.remove('hidden');
+    showMoment();
+}
+
+// ---- Render board ----
+function renderBoard(fen, flipped) {
+    const board = document.getElementById('review-board');
+    board.innerHTML = '';
+    const game = new Chess(fen);
+
+    for (let row = 0; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            const rank = flipped ? row + 1 : 8 - row;
+            const file = flipped ? 7 - col : col;
+            const sq = 'abcdefgh'[file] + rank;
+
+            const cell = document.createElement('div');
+            cell.className = 'rv-square';
+            cell.dataset.square = sq;
+            cell.classList.add((file + rank) % 2 === 0 ? 'light' : 'dark');
+
+            const piece = game.get(sq);
+            if (piece) {
+                const img = document.createElement('img');
+                img.className = 'piece';
+                const c = piece.color === 'w' ? 'w' : 'b';
+                img.src = `/static/pieces/${c}${piece.type.toUpperCase()}.svg`;
+                img.draggable = false;
+                cell.appendChild(img);
+            }
+
+            if (col === 0) {
+                const r = document.createElement('span');
+                r.className = 'coord coord-rank';
+                r.textContent = rank;
+                cell.appendChild(r);
+            }
+            if (row === 7) {
+                const f = document.createElement('span');
+                f.className = 'coord coord-file';
+                f.textContent = 'abcdefgh'[file];
+                cell.appendChild(f);
+            }
+
+            board.appendChild(cell);
+        }
+    }
+}
+
+// ---- Arrow rendering ----
+function sqToCoords(sq, flipped) {
+    const file = sq.charCodeAt(0) - 97; // 0-7
+    const rank = parseInt(sq[1]) - 1;   // 0-7
+    const x = flipped ? (7 - file) : file;
+    const y = flipped ? rank : (7 - rank);
+    return { x: x * 100 + 50, y: y * 100 + 50 };
+}
+
+function drawArrow(svg, from, to, groupClass, id) {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', groupClass);
+    g.setAttribute('id', id);
+
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const ux = dx / len;
+    const uy = dy / len;
+
+    // Shorten arrow so head doesn't overlap center of target square
+    const headLen = 22;
+    const endX = to.x - ux * headLen;
+    const endY = to.y - uy * headLen;
+
+    // Arrow shaft
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', from.x);
+    line.setAttribute('y1', from.y);
+    line.setAttribute('x2', endX);
+    line.setAttribute('y2', endY);
+    line.setAttribute('stroke-width', '16');
+    line.setAttribute('stroke-linecap', 'round');
+    line.setAttribute('class', 'arrow-line');
+
+    // Arrow head
+    const head = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    const tipX = to.x - ux * 4;
+    const tipY = to.y - uy * 4;
+    const baseX = to.x - ux * 30;
+    const baseY = to.y - uy * 30;
+    const perpX = -uy * 18;
+    const perpY = ux * 18;
+    head.setAttribute('points',
+        `${tipX},${tipY} ${baseX + perpX},${baseY + perpY} ${baseX - perpX},${baseY - perpY}`
+    );
+    head.setAttribute('class', 'arrow-line');
+
+    // Invisible fat hit area for hover/click
+    const hit = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hit.setAttribute('x1', from.x);
+    hit.setAttribute('y1', from.y);
+    hit.setAttribute('x2', to.x);
+    hit.setAttribute('y2', to.y);
+    hit.setAttribute('stroke-width', '40');
+    hit.setAttribute('class', 'arrow-hit');
+
+    g.appendChild(hit);
+    g.appendChild(line);
+    g.appendChild(head);
+    svg.appendChild(g);
+    return g;
+}
+
+// ---- Show moment ----
+function showMoment() {
+    const m = moments[currentIdx];
+    currentMoment = m;
+
+    // Update HUD
+    document.getElementById('hud-correct').textContent = correctCount;
+    document.getElementById('hud-wrong').textContent = wrongCount;
+    document.getElementById('hud-progress').textContent = `${currentIdx + 1} / ${moments.length}`;
+
+    // Moment info
+    const info = document.getElementById('moment-info');
+    const tagCls = m.moment_type;
+    const tagLabel = m.moment_type === 'blunder' ? 'Blunder' : 'Mistake';
+    const players = m.player_color === 'white'
+        ? `${m.white_name} vs ${m.black_name}`
+        : `${m.black_name} vs ${m.white_name}`;
+    info.innerHTML = `
+        <span class="game-label">${players}</span> &middot;
+        <span class="move-num">Move ${m.move_number}</span> &middot;
+        <span class="moment-tag ${tagCls}">${tagLabel}</span> &middot;
+        <span>Eval drop: ${(m.eval_drop / 100).toFixed(1)}</span>
+    `;
+
+    // Render board (flipped if player is black)
+    const flipped = m.player_color === 'black';
+    renderBoard(m.fen, flipped);
+
+    // Draw arrows
+    const svg = document.getElementById('arrow-svg');
+    svg.innerHTML = '';
+
+    // Parse moves (UCI format like e2e4)
+    const playerFrom = m.player_move.substring(0, 2);
+    const playerTo = m.player_move.substring(2, 4);
+    const bestFrom = m.best_move.substring(0, 2);
+    const bestTo = m.best_move.substring(2, 4);
+
+    // Shuffle which is A and which is B
+    if (Math.random() < 0.5) {
+        shuffledMoves = [
+            { move: m.best_move, from: bestFrom, to: bestTo, isBest: true },
+            { move: m.player_move, from: playerFrom, to: playerTo, isBest: false },
+        ];
+    } else {
+        shuffledMoves = [
+            { move: m.player_move, from: playerFrom, to: playerTo, isBest: false },
+            { move: m.best_move, from: bestFrom, to: bestTo, isBest: true },
+        ];
+    }
+
+    const coordsA = { from: sqToCoords(shuffledMoves[0].from, flipped), to: sqToCoords(shuffledMoves[0].to, flipped) };
+    const coordsB = { from: sqToCoords(shuffledMoves[1].from, flipped), to: sqToCoords(shuffledMoves[1].to, flipped) };
+
+    const arrowA = drawArrow(svg, coordsA.from, coordsA.to, 'arrow-a', 'arrow-a');
+    const arrowB = drawArrow(svg, coordsB.from, coordsB.to, 'arrow-b', 'arrow-b');
+
+    // Label arrows with move notation
+    const game = new Chess(m.fen);
+    const moveAsan = uciToSan(game, shuffledMoves[0].move);
+    const moveBsan = uciToSan(game, shuffledMoves[1].move);
+
+    document.querySelector('#choice-a span:last-child').textContent = `Move A: ${moveAsan}`;
+    document.querySelector('#choice-b span:last-child').textContent = `Move B: ${moveBsan}`;
+
+    // Enable buttons
+    const btnA = document.getElementById('choice-a');
+    const btnB = document.getElementById('choice-b');
+    btnA.disabled = false;
+    btnB.disabled = false;
+    btnA.onclick = () => pickChoice(0);
+    btnB.onclick = () => pickChoice(1);
+
+    // Hide reveal
+    document.getElementById('reveal-section').classList.add('hidden');
+    document.getElementById('choice-row').classList.remove('hidden');
+
+    // Click arrow to pick
+    arrowA.querySelector('.arrow-hit').style.pointerEvents = 'auto';
+    arrowA.querySelector('.arrow-hit').style.cursor = 'pointer';
+    arrowA.querySelector('.arrow-hit').onclick = () => pickChoice(0);
+    arrowB.querySelector('.arrow-hit').style.pointerEvents = 'auto';
+    arrowB.querySelector('.arrow-hit').style.cursor = 'pointer';
+    arrowB.querySelector('.arrow-hit').onclick = () => pickChoice(1);
+}
+
+function uciToSan(game, uci) {
+    try {
+        const from = uci.substring(0, 2);
+        const to = uci.substring(2, 4);
+        const promo = uci.length > 4 ? uci[4] : undefined;
+        const moves = game.moves({ verbose: true });
+        const match = moves.find(m => m.from === from && m.to === to && (!promo || m.promotion === promo));
+        return match ? match.san : uci;
+    } catch {
+        return uci;
+    }
+}
+
+// ---- Pick choice ----
+async function pickChoice(idx) {
+    const chosen = shuffledMoves[idx];
+    const isCorrect = chosen.isBest;
+
+    // Disable buttons
+    document.getElementById('choice-a').disabled = true;
+    document.getElementById('choice-b').disabled = true;
+
+    // Remove arrow click handlers
+    document.querySelectorAll('.arrow-hit').forEach(h => {
+        h.style.pointerEvents = 'none';
+        h.onclick = null;
+    });
+
+    // Update scores
+    if (isCorrect) {
+        correctCount++;
+        document.getElementById('hud-correct').textContent = correctCount;
+    } else {
+        wrongCount++;
+        document.getElementById('hud-wrong').textContent = wrongCount;
+    }
+
+    // Re-color arrows: best = green, yours = red
+    const svg = document.getElementById('arrow-svg');
+    const bestIdx = shuffledMoves.findIndex(m => m.isBest);
+    const yoursIdx = 1 - bestIdx;
+
+    const arrowEls = [svg.getElementById('arrow-a'), svg.getElementById('arrow-b')];
+    arrowEls[bestIdx].setAttribute('class', 'arrow-best');
+    arrowEls[yoursIdx].setAttribute('class', 'arrow-yours');
+
+    // Show reveal card
+    const revealCard = document.getElementById('reveal-card');
+    const verdict = document.getElementById('reveal-verdict');
+    const explain = document.getElementById('reveal-explain');
+
+    if (isCorrect) {
+        revealCard.className = 'reveal-card correct-card';
+        verdict.className = 'reveal-verdict correct';
+        verdict.textContent = 'Correct!';
+    } else {
+        revealCard.className = 'reveal-card wrong-card';
+        verdict.className = 'reveal-verdict wrong';
+        verdict.textContent = 'Wrong!';
+    }
+
+    const m = currentMoment;
+    const evalBefore = (m.eval_before / 100).toFixed(1);
+    const evalAfter = (m.eval_after / 100).toFixed(1);
+    const evalBest = (m.eval_best / 100).toFixed(1);
+
+    const game = new Chess(m.fen);
+    const bestSan = uciToSan(game, m.best_move);
+    const yourSan = uciToSan(game, m.player_move);
+
+    explain.innerHTML = `
+        You played <span class="eval" style="color:var(--red-light)">${yourSan}</span>
+        (eval: ${evalBefore} &rarr; ${evalAfter})<br>
+        Best was <span class="eval" style="color:var(--green-light)">${bestSan}</span>
+        (eval: ${evalBefore} &rarr; ${evalBest})
+    `;
+
+    document.getElementById('choice-row').classList.add('hidden');
+    document.getElementById('reveal-section').classList.remove('hidden');
+
+    // Record answer
+    fetch(`/api/user/${userId}/moments/${m.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correct: isCorrect }),
+    });
+
+    // Next button
+    document.getElementById('next-btn').onclick = nextMoment;
+}
+
+function nextMoment() {
+    currentIdx++;
+    if (currentIdx >= moments.length) {
+        showDone();
+    } else {
+        showMoment();
+    }
+}
+
+function showDone() {
+    document.getElementById('step-quiz').classList.add('hidden');
+    const done = document.getElementById('step-done');
+    done.classList.remove('hidden');
+
+    const total = correctCount + wrongCount;
+    const pct = total > 0 ? Math.round(correctCount / total * 100) : 0;
+
+    done.innerHTML = `
+        <div class="done-card">
+            <h2>Session Complete</h2>
+            <div class="done-big">${pct}%</div>
+            <div class="done-sub">${correctCount} correct out of ${total} positions</div>
+            <div class="done-btns">
+                <button class="btn-primary" onclick="location.reload()">Review More</button>
+                <a href="/games/${userId}" class="btn-secondary">Import Games</a>
+                <a href="/play/${userId}" class="btn-secondary">Practice</a>
+            </div>
+        </div>
+    `;
+}
+
+boot();
+</script>
+</body>
+</html>

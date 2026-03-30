@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+</head>
+<body data-user-id="{{ user_id }}">
+
+<div id="app">
+    {% include '_nav.html' %}
+
+    <div id="elo-card">
+        <div id="elo-display">
+            <span class="elo-label">Rating</span>
+            <span id="elo-value">400</span>
+            <span id="elo-delta" class="elo-fade"></span>
+        </div>
+        <div id="elo-stats">
+            <span id="games-played">0</span> played &middot;
+            <span id="win-rate">0</span>% solved
+            <span id="streak-badge"></span>
+        </div>
+    </div>
+
+    <div id="puzzle-info">
+        <span><span class="label">Puzzle </span><span class="value" id="rating">---</span></span>
+        <span><span class="label">Play as </span><span id="color-indicator" class="white"></span></span>
+        <span><span class="label">Themes </span><span class="value" id="themes">---</span></span>
+    </div>
+
+    <div id="board-section">
+        <div id="board"></div>
+    </div>
+
+    <div id="status" class="status-info">Loading puzzle...</div>
+    <div id="sub-status">
+        <span id="move-count"></span>
+        <span id="timer"></span>
+    </div>
+
+    <div id="buttons">
+        <button id="undo-btn" disabled>Undo</button>
+        <button id="skip-btn">Skip</button>
+        <button id="retry-btn" class="hidden">Retry</button>
+        <button id="next-btn" class="hidden">Next Puzzle</button>
+    </div>
+
+    <div id="history">
+        <div id="history-entries"></div>
+    </div>
+
+    <div id="filter-row">
+        <span class="label">Difficulty:</span>
+        <select id="rating-filter">
+            <option value="adaptive" selected>Adaptive (your level)</option>
+            <option value="all">All ratings</option>
+            <option value="0-800">Beginner (&lt;800)</option>
+            <option value="800-1200">Easy (800-1200)</option>
+            <option value="1200-1600">Intermediate (1200-1600)</option>
+            <option value="1600-2000">Advanced (1600-2000)</option>
+            <option value="2000-2500">Hard (2000-2500)</option>
+            <option value="2500-9999">Expert (2500+)</option>
+        </select>
+
+        <span class="label">Theme:</span>
+        <select id="theme-filter">
+            <option value="">All themes</option>
+            <optgroup label="Tactics">
+                <option value="fork">Fork</option>
+                <option value="pin">Pin</option>
+                <option value="skewer">Skewer</option>
+                <option value="discoveredAttack">Discovered Attack</option>
+                <option value="doubleCheck">Double Check</option>
+                <option value="sacrifice">Sacrifice</option>
+                <option value="deflection">Deflection</option>
+                <option value="decoy">Decoy</option>
+                <option value="hangingPiece">Hanging Piece</option>
+                <option value="trappedPiece">Trapped Piece</option>
+            </optgroup>
+            <optgroup label="Checkmate">
+                <option value="mateIn1">Mate in 1</option>
+                <option value="mateIn2">Mate in 2</option>
+                <option value="mateIn3">Mate in 3</option>
+                <option value="backRankMate">Back Rank Mate</option>
+                <option value="smotheredMate">Smothered Mate</option>
+            </optgroup>
+            <optgroup label="Game Phase">
+                <option value="opening">Opening</option>
+                <option value="middlegame">Middlegame</option>
+                <option value="endgame">Endgame</option>
+            </optgroup>
+            <optgroup label="Endgame Type">
+                <option value="rookEndgame">Rook Endgame</option>
+                <option value="pawnEndgame">Pawn Endgame</option>
+                <option value="queenEndgame">Queen Endgame</option>
+            </optgroup>
+            <optgroup label="Special">
+                <option value="quietMove">Quiet Move</option>
+                <option value="zugzwang">Zugzwang</option>
+                <option value="underPromotion">Underpromotion</option>
+            </optgroup>
+        </select>
+
+        <button id="mute-btn" title="Toggle sound (keyboard: M)">Sound On</button>
+    </div>
+</div>
+
+<div id="promotion-overlay" class="hidden">
+    <div id="promotion-picker"></div>
+</div>
+
+<script src="{{ url_for('static', filename='chess.min.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

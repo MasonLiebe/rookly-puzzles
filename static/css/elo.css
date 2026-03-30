@@ -1,0 +1,64 @@
+/* ===== Elo Display ===== */
+#elo-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 0.75rem 1.5rem;
+    margin-bottom: 0.65rem;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    width: min(320px, calc(100vw - 2rem));
+}
+
+#elo-display {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.3rem;
+}
+
+.elo-label {
+    color: var(--text-3);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+}
+
+#elo-value {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+    line-height: 1.15;
+}
+#elo-value.counting-up   { color: var(--green-light); }
+#elo-value.counting-down { color: var(--red-light); }
+
+#elo-delta {
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5ch;
+}
+.elo-up   { color: var(--green-light); }
+.elo-down { color: var(--red-light); }
+.elo-fade { opacity: 0; transition: opacity 0.8s 1.5s; }
+
+#elo-stats {
+    color: var(--text-3);
+    font-size: 0.7rem;
+    margin-top: 0.2rem;
+}
+
+#streak-badge {
+    display: inline-block;
+    color: var(--amber);
+    font-weight: 700;
+    font-size: 0.7rem;
+    margin-left: 0.3rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+#streak-badge.visible { opacity: 1; }

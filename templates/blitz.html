@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles - Blitz Drill</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+/* ---- Drill picker ---- */
+.drill-header { text-align: center; margin-bottom: 0.8rem; }
+.drill-header h1 { font-size: 1.3rem; margin-bottom: 0.2rem; }
+.drill-header p { color: var(--text-3); font-size: 0.8rem; }
+
+.drill-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem; width: min(500px, calc(100vw - 2rem)); margin: 0 auto 1.5rem;
+}
+.drill-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 0.8rem; cursor: pointer; text-align: center;
+    transition: border-color 0.15s, transform 0.12s;
+    color: var(--text-1); font-weight: 600; font-size: 0.85rem;
+}
+.drill-card:hover { border-color: var(--green); transform: translateY(-2px); }
+.drill-card .drill-sub { font-size: 0.65rem; color: var(--text-3); font-weight: 400; margin-top: 0.15rem; }
+
+/* ---- Blitz HUD ---- */
+#blitz-hud {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1.5rem; width: var(--board-size);
+    margin-bottom: 0.5rem; padding-top: 0.5rem;
+}
+#blitz-score {
+    font-size: 2.2rem; font-weight: 800; color: var(--text-1);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+#blitz-score-label { font-size: 0.6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.hud-center { text-align: center; }
+#blitz-timer {
+    font-size: 2.2rem; font-weight: 800; color: var(--text-1);
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+#blitz-timer.urgent { color: var(--red-light); }
+#blitz-timer-label { font-size: 0.6rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+#blitz-drill-name { font-size: 0.75rem; color: var(--amber); font-weight: 600; }
+
+/* ---- Board overlay ---- */
+#board-section { position: relative; }
+#board-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none; z-index: 50; opacity: 0; transition: opacity 0.12s;
+}
+#board-overlay.show { opacity: 1; }
+#board-overlay .overlay-icon {
+    font-size: min(8rem, 30vw); font-weight: 800; line-height: 1;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.6);
+}
+#board-overlay.correct .overlay-icon { color: var(--green-light); }
+#board-overlay.wrong   .overlay-icon { color: var(--red-light); }
+
+@keyframes score-bump { 0% { transform: scale(1); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.score-bump { animation: score-bump 0.2s ease-out; }
+
+/* ---- Puzzle info ---- */
+#puzzle-info { display: flex; gap: 1.2rem; justify-content: center; align-items: center; margin-bottom: 0.6rem; font-size: 0.8rem; flex-wrap: wrap; }
+#puzzle-info .label { color: var(--text-3); } #puzzle-info .value { color: var(--text-2); font-weight: 600; }
+#color-indicator { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--border); vertical-align: middle; margin-right: 2px; }
+#color-indicator.white { background: #f0f0f0; } #color-indicator.black { background: #1a1a1a; }
+
+/* ---- Results overlay ---- */
+#blitz-results {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; backdrop-filter: blur(4px);
+}
+.results-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--r-lg); padding: 2rem 2.5rem;
+    text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    max-width: 420px; width: calc(100vw - 2rem);
+}
+.results-card h2 { font-size: 1.4rem; color: var(--text-1); margin-bottom: 0.3rem; }
+.results-big { font-size: 3rem; font-weight: 800; color: var(--green-light); line-height: 1.1; }
+.results-sub { font-size: 0.8rem; color: var(--text-3); margin-bottom: 1rem; }
+.results-new-best { color: var(--amber); font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; }
+
+/* Leaderboard in results */
+.lb-table { width: 100%; margin-bottom: 1rem; }
+.lb-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.35rem 0; border-bottom: 1px solid var(--border); font-size: 0.8rem;
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-row.me { color: var(--green-light); font-weight: 700; }
+.lb-rank { width: 24px; color: var(--text-3); font-weight: 600; }
+.lb-name { flex: 1; text-align: left; }
+.lb-score { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 30px; text-align: right; }
+
+.results-btns { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; }
+.results-btns a, .results-btns button {
+    padding: 0.5rem 1.2rem; border: none; border-radius: var(--r-md);
+    font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: transform 0.1s;
+}
+.results-btns a:hover, .results-btns button:hover { transform: translateY(-1px); }
+.btn-primary { background: var(--green); color: #fff; }
+.btn-secondary { background: var(--bg-elevated); color: var(--text-2); }
+
+/* ---- Countdown start overlay ---- */
+#countdown-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 200;
+}
+#countdown-num {
+    font-size: 6rem; font-weight: 800; color: var(--text-1);
+    animation: score-bump 0.5s ease-out;
+}
+</style>
+</head>
+<body data-user-id="{{ user_id }}">
+
+<div id="app">
+    {% include '_nav.html' %}
+
+    <!-- Step 1: Pick drill -->
+    <div id="step-pick">
+        <div class="drill-header">
+            <h1>Blitz Drill</h1>
+            <p>60 seconds. Solve as many as you can.</p>
+        </div>
+        <div class="drill-grid" id="drill-grid"></div>
+    </div>
+
+    <!-- Step 2: In-drill -->
+    <div id="step-drill" class="hidden">
+        <div id="blitz-hud">
+            <div class="hud-center">
+                <div id="blitz-score">0</div>
+                <div id="blitz-score-label">Solved</div>
+            </div>
+            <div class="hud-center">
+                <div id="blitz-drill-name"></div>
+            </div>
+            <div class="hud-center">
+                <div id="blitz-timer">60</div>
+                <div id="blitz-timer-label">Seconds</div>
+            </div>
+        </div>
+
+        <div id="puzzle-info">
+            <span><span class="label">Puzzle </span><span class="value" id="rating">---</span></span>
+            <span><span class="label">Play as </span><span id="color-indicator" class="white"></span></span>
+        </div>
+
+        <div id="board-section">
+            <div id="board"></div>
+            <div id="board-overlay"><span class="overlay-icon"></span></div>
+        </div>
+
+        <div id="status" class="status-info"></div>
+        <div id="sub-status"><span id="move-count"></span><span id="timer"></span></div>
+    </div>
+</div>
+
+<div id="blitz-results" class="hidden">
+    <div class="results-card" id="results-card"></div>
+</div>
+
+<div id="countdown-overlay" class="hidden">
+    <div id="countdown-num">3</div>
+</div>
+
+<div id="promotion-overlay" class="hidden">
+    <div id="promotion-picker"></div>
+</div>
+
+<script src="/static/chess.min.js"></script>
+<script type="module" src="/static/js/blitz.js"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+/* ===== Design tokens ===== */
+:root {
+    --bg-body: #1a1a21;
+    --bg-surface: #24232b;
+    --bg-elevated: #2e2d36;
+    --bg-hover: #383740;
+
+    --text-1: #eae8e4;
+    --text-2: #a8a6a0;
+    --text-3: #6b6964;
+
+    --sq-light: #ebd7b2;
+    --sq-dark: #b08968;
+    --sq-select-light: #829769;
+    --sq-select-dark: #646d40;
+    --sq-last-light: #cdd26a;
+    --sq-last-dark: #aaa23a;
+    --sq-check-light: #e85656;
+    --sq-check-dark: #c44;
+
+    --green: #5e9e2f;
+    --green-light: #7bc77b;
+    --green-bg: #1b3a1b;
+    --red: #cc4444;
+    --red-light: #ee8888;
+    --red-bg: #3a1b1b;
+    --amber: #c89420;
+    --amber-light: #d4c462;
+    --amber-bg: #3a351b;
+    --blue: #4a8fd4;
+
+    --border: #3e3d45;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.35);
+    --shadow-board: 0 6px 28px rgba(0,0,0,0.55);
+
+    --r-sm: 4px;
+    --r-md: 8px;
+    --r-lg: 12px;
+
+    --board-size: min(520px, calc(100vw - 2.5rem));
+}
+
+/* ===== Reset & Layout ===== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-body);
+    color: var(--text-2);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-font-smoothing: antialiased;
+}
+
+#app {
+    max-width: 680px;
+    width: 100%;
+    padding: 0 1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    font-size: 1.25rem;
+    color: var(--text-1);
+    margin: 1.2rem 0 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+}
+
+.hidden { display: none !important; }
+
+/* ---- Top navigation bar ---- */
+#top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 0.7rem 0 0.4rem;
+    font-size: 0.78rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0.6rem;
+}
+.nav-home {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: opacity 0.12s;
+}
+.nav-home:hover { opacity: 0.8; }
+.nav-player-name {
+    font-weight: 700;
+    color: var(--text-1);
+    font-size: 0.85rem;
+}
+.nav-links {
+    display: flex;
+    gap: 0.15rem;
+}
+.nav-link {
+    color: var(--text-3);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.12s, background 0.12s;
+    padding: 0.25rem 0.55rem;
+    border-radius: var(--r-sm);
+}
+.nav-link:hover { color: var(--text-1); background: var(--bg-elevated); }
+.nav-link.active {
+    color: var(--text-1);
+    background: var(--bg-elevated);
+    font-weight: 600;
+}
+
+/* ---- Puzzle info row ---- */
+#puzzle-info {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+}
+#puzzle-info .label { color: var(--text-3); }
+#puzzle-info .value { color: var(--text-2); font-weight: 600; }
+
+#color-indicator {
+    display: inline-block;
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    vertical-align: middle;
+    margin-right: 2px;
+}
+#color-indicator.white { background: #f0f0f0; }
+#color-indicator.black { background: #1a1a1a; }

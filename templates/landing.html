@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+.landing-header { text-align: center; margin: 2.5rem 0 1.5rem; }
+.landing-header h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+.landing-subtitle { color: var(--text-3); font-size: 0.9rem; }
+.step { display: none; } .step.active { display: block; }
+
+/* ---- Player grid ---- */
+#user-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem; width: min(560px, calc(100vw - 2rem)); margin: 0 auto;
+}
+.user-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 1.2rem; cursor: pointer; transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+    display: flex; align-items: center; gap: 1rem; text-decoration: none; color: inherit;
+}
+.user-card:hover { transform: translateY(-3px); box-shadow: 0 6px 24px rgba(0,0,0,0.4); border-color: var(--green); }
+.user-card:active { transform: translateY(-1px); }
+.user-avatar {
+    width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-weight: 800; font-size: 1.2rem; color: #fff; flex-shrink: 0;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name-row { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.15rem; }
+.user-name { font-size: 1.05rem; font-weight: 700; color: var(--text-1); }
+.user-rank { font-size: 0.7rem; color: var(--text-3); font-weight: 600; }
+.user-elo { font-size: 1.5rem; font-weight: 800; color: var(--text-1); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.user-elo-label { font-size: 0.65rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+.user-stats { font-size: 0.72rem; color: var(--text-3); margin-top: 0.15rem; }
+.user-stats .solved-pct { color: var(--green-light); font-weight: 600; }
+.user-stats .streak-val { color: var(--amber); font-weight: 600; }
+.user-elo-col { text-align: right; flex-shrink: 0; }
+.new-badge { display: inline-block; font-size: 0.6rem; color: var(--text-3); background: var(--bg-elevated); padding: 0.15rem 0.4rem; border-radius: var(--r-sm); font-weight: 500; }
+
+/* ---- Mode selection ---- */
+.mode-header { text-align: center; margin-bottom: 1.2rem; }
+.mode-header h2 { font-size: 1.1rem; color: var(--text-1); margin-bottom: 0.2rem; }
+.mode-player-name { color: var(--green-light); }
+.mode-back { display: inline-block; font-size: 0.75rem; color: var(--text-3); cursor: pointer; margin-top: 0.3rem; transition: color 0.12s; }
+.mode-back:hover { color: var(--text-1); }
+
+#mode-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.6rem; width: min(560px, calc(100vw - 2rem)); margin: 0 auto;
+}
+.mode-card {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+    padding: 1.1rem 1.2rem; cursor: pointer; text-decoration: none; color: inherit;
+    transition: transform 0.15s, box-shadow 0.2s, border-color 0.2s; display: block;
+}
+.mode-card:hover { transform: translateY(-3px); box-shadow: 0 6px 24px rgba(0,0,0,0.4); border-color: var(--green); }
+.mode-card:active { transform: translateY(-1px); }
+.mode-title {
+    font-size: 0.95rem; font-weight: 700; color: var(--text-1);
+    margin-bottom: 0.2rem; display: flex; align-items: center; gap: 0.4rem;
+}
+.mode-icon { width: 22px; height: 22px; flex-shrink: 0; }
+.mode-desc { font-size: 0.72rem; color: var(--text-3); line-height: 1.35; }
+
+/* ---- Blitz leaderboard section ---- */
+.lb-section {
+    width: min(560px, calc(100vw - 2rem)); margin: 1.5rem auto 0;
+}
+.lb-section-title {
+    font-size: 0.75rem; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.5rem; text-align: center;
+}
+.lb-drills {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.5rem;
+}
+.lb-drill-card {
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--r-md); padding: 0.6rem 0.7rem;
+}
+.lb-drill-name {
+    font-size: 0.72rem; font-weight: 700; color: var(--text-2); margin-bottom: 0.3rem;
+    display: flex; align-items: center; gap: 0.3rem;
+}
+.lb-drill-name img { width: 14px; height: 14px; }
+.lb-entry {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.68rem; padding: 0.1rem 0;
+}
+.lb-entry-rank { color: var(--text-3); font-weight: 600; width: 18px; }
+.lb-entry-name { flex: 1; color: var(--text-2); }
+.lb-entry-score { font-weight: 700; color: var(--text-1); font-variant-numeric: tabular-nums; }
+.lb-entry.me .lb-entry-name { color: var(--green-light); }
+.lb-entry.me .lb-entry-score { color: var(--green-light); }
+.lb-empty { font-size: 0.65rem; color: var(--text-3); }
+
+/* Inline leaderboard under blitz mode card */
+.mode-lb { margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid var(--border); }
+.mode-lb .lb-entry { font-size: 0.65rem; }
+</style>
+</head>
+<body>
+
+<div id="app">
+    <div class="landing-header">
+        <h1>Rookly Puzzles</h1>
+        <p class="landing-subtitle" id="subtitle">Who's playing today?</p>
+    </div>
+
+    <!-- Step 1: Pick player -->
+    <div id="step-players" class="step active">
+        <div id="user-grid"></div>
+        <div class="lb-section" id="home-leaderboards"></div>
+    </div>
+
+    <!-- Step 2: Pick mode -->
+    <div id="step-modes" class="step">
+        <div class="mode-header">
+            <h2>What do you want to play, <span class="mode-player-name" id="mode-name"></span>?</h2>
+            <div class="mode-back" id="back-btn">Switch player</div>
+        </div>
+        <div id="mode-grid"></div>
+    </div>
+</div>
+
+<script>
+const AVATAR_COLORS = ['#4a8fd4','#5e9e2f','#c89420','#cc4444','#9b59b6','#e67e22'];
+let selectedUser = null;
+let blitzData = {};
+
+const DRILL_LABELS = {
+    mateIn1: 'Mate in 1', fork: 'Forks', pin: 'Pins',
+    hanging: 'Hanging Pieces', back_rank: 'Back Rank', mixed: 'Mixed',
+};
+
+const MODES = [
+    { id: 'practice', title: 'Practice',       icon: 'wP', href: u => `/play/${u.id}`,
+      desc: 'Solve puzzles at your own pace. Your Elo rating adjusts as you improve.' },
+    { id: 'blitz',    title: 'Blitz Drill',     icon: 'wN', href: u => `/blitz/${u.id}`,
+      desc: '60-second sprint. Solve as many as you can.' },
+    { id: 'race',     title: 'Puzzle Race',     icon: 'wR', href: u => `/race?user=${u.id}`,
+      desc: 'Race 2-6 players. 3 lives, most correct wins. Difficulty ramps up.' },
+    { id: 'games',    title: 'My Games',         icon: 'wB', href: u => `/games/${u.id}`,
+      desc: 'Import your Lichess or Chess.com games.' },
+    { id: 'review',   title: 'Review Blunders',  icon: 'bQ', href: u => `/review/${u.id}`,
+      desc: 'Guess the best move in positions where you blundered. Learn from your own games.' },
+    { id: 'stats',    title: 'Stats & Growth',  icon: 'wK', href: u => `/analytics/${u.id}`,
+      desc: 'Activity calendar, Elo chart, and theme accuracy breakdown.' },
+];
+
+async function boot() {
+    const [users, lb] = await Promise.all([
+        fetch('/api/users').then(r => r.json()),
+        fetch('/api/blitz/leaderboards').then(r => r.json()),
+    ]);
+    blitzData = lb;
+
+    // ---- Player grid ----
+    const grid = document.getElementById('user-grid');
+    users.forEach((u, i) => {
+        const pct = u.games_played > 0
+            ? Math.round(100 * u.puzzles_solved / u.games_played) : 0;
+        const card = document.createElement('div');
+        card.className = 'user-card';
+        card.onclick = () => selectUser(u, i);
+        const color = AVATAR_COLORS[u.id - 1] || AVATAR_COLORS[i % AVATAR_COLORS.length];
+        const statsLine = u.games_played === 0
+            ? '<span class="new-badge">New player</span>'
+            : `<span class="solved-pct">${pct}%</span> of ${u.games_played} puzzles`
+              + (u.current_streak >= 2 ? ` &middot; <span class="streak-val">${u.current_streak} streak</span>` : '');
+        card.innerHTML = `
+            <div class="user-avatar" style="background:${color}">${u.name[0]}</div>
+            <div class="user-info">
+                <div class="user-name-row">
+                    <span class="user-name">${u.name}</span>
+                    <span class="user-rank">#${i + 1}</span>
+                </div>
+                <div class="user-stats">${statsLine}</div>
+            </div>
+            <div class="user-elo-col">
+                <div class="user-elo">${Math.round(u.elo)}</div>
+                <div class="user-elo-label">Rating</div>
+            </div>`;
+        grid.appendChild(card);
+    });
+
+    // ---- Home leaderboards ----
+    renderHomeLeaderboards();
+
+    // ---- Mode grid ----
+    const modeGrid = document.getElementById('mode-grid');
+    for (const m of MODES) {
+        const card = document.createElement('a');
+        card.className = 'mode-card';
+        card.dataset.mode = m.id;
+        let extra = '';
+        if (m.id === 'blitz') {
+            extra = buildBlitzMiniLB();
+        }
+        card.innerHTML = `
+            <div class="mode-title">
+                <img class="mode-icon" src="/static/pieces/${m.icon}.svg">
+                ${m.title}
+            </div>
+            <div class="mode-desc">${m.desc}</div>
+            ${extra}`;
+        modeGrid.appendChild(card);
+    }
+}
+
+function renderHomeLeaderboards() {
+    const container = document.getElementById('home-leaderboards');
+    const drills = Object.keys(blitzData);
+    if (drills.length === 0) return;
+
+    let html = '<div class="lb-section-title">Blitz Leaderboards</div><div class="lb-drills">';
+    for (const [drill, label] of Object.entries(DRILL_LABELS)) {
+        const entries = blitzData[drill] || [];
+        html += `<div class="lb-drill-card"><div class="lb-drill-name"><img src="/static/pieces/wN.svg">${label}</div>`;
+        if (entries.length === 0) {
+            html += '<div class="lb-empty">No scores yet</div>';
+        } else {
+            for (let i = 0; i < Math.min(3, entries.length); i++) {
+                const e = entries[i];
+                html += `<div class="lb-entry"><span class="lb-entry-rank">#${i+1}</span><span class="lb-entry-name">${e.name}</span><span class="lb-entry-score">${e.best}</span></div>`;
+            }
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function buildBlitzMiniLB() {
+    // Find the drill with the most entries for a summary, or show top across all
+    const allEntries = [];
+    for (const [drill, entries] of Object.entries(blitzData)) {
+        for (const e of entries) {
+            allEntries.push({ ...e, drill });
+        }
+    }
+    if (allEntries.length === 0) return '';
+
+    // Show top 3 scores across all drills
+    allEntries.sort((a, b) => b.best - a.best);
+    let html = '<div class="mode-lb">';
+    for (let i = 0; i < Math.min(3, allEntries.length); i++) {
+        const e = allEntries[i];
+        const drillLabel = DRILL_LABELS[e.drill] || e.drill;
+        html += `<div class="lb-entry"><span class="lb-entry-rank">#${i+1}</span><span class="lb-entry-name">${e.name}</span><span class="lb-entry-score">${e.best} <span style="color:var(--text-3);font-weight:400">${drillLabel}</span></span></div>`;
+    }
+    html += '</div>';
+    return html;
+}
+
+function selectUser(u) {
+    selectedUser = u;
+    document.getElementById('mode-name').textContent = u.name;
+    document.getElementById('subtitle').textContent = '';
+
+    // Highlight this user in any leaderboard entries on the mode cards
+    for (const m of MODES) {
+        const card = document.querySelector(`[data-mode="${m.id}"]`);
+        card.href = m.href(u);
+        card.querySelectorAll('.lb-entry').forEach(el => {
+            el.classList.toggle('me', el.querySelector('.lb-entry-name')?.textContent === u.name);
+        });
+    }
+
+    document.getElementById('step-players').classList.remove('active');
+    document.getElementById('step-modes').classList.add('active');
+}
+
+document.getElementById('back-btn').onclick = () => {
+    document.getElementById('step-modes').classList.remove('active');
+    document.getElementById('step-players').classList.add('active');
+    document.getElementById('subtitle').textContent = "Who's playing today?";
+};
+
+boot();
+</script>
+</body>
+</html>

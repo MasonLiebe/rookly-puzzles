@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles - Race</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+.lobby-header { text-align: center; margin: 2rem 0 1rem; }
+.lobby-header h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+.lobby-header p { color: var(--text-3); font-size: 0.85rem; }
+.lobby-back { display: block; text-align: center; margin-bottom: 1rem; }
+.lobby-back a { color: var(--text-3); text-decoration: none; font-size: 0.78rem; }
+.lobby-back a:hover { color: var(--text-1); }
+.step { display: none; } .step.active { display: block; }
+
+.player-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem; width: min(500px, calc(100vw - 2rem)); margin: 0 auto 1.5rem;
+}
+.player-btn {
+    background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 0.75rem; cursor: pointer; text-align: center; transition: border-color 0.15s, transform 0.12s;
+    color: var(--text-1); font-weight: 600; font-size: 0.9rem;
+}
+.player-btn:hover { border-color: var(--green); transform: translateY(-2px); }
+.player-btn .elo { font-size: 0.7rem; color: var(--text-3); font-weight: 400; }
+.step-title { text-align: center; font-size: 0.85rem; color: var(--text-2); margin-bottom: 0.75rem; font-weight: 600; }
+
+.create-form { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; margin-bottom: 1.5rem; }
+.form-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+.form-row label { color: var(--text-3); min-width: 80px; }
+.form-row select { padding: 0.35rem 0.6rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-2); font-size: 0.8rem; }
+.create-btn { background: var(--green); color: #fff; border: none; border-radius: var(--r-md); padding: 0.6rem 2rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; margin-top: 0.3rem; transition: background 0.12s; }
+.create-btn:hover { background: #6bb032; }
+.rules-text { font-size: 0.75rem; color: var(--text-3); text-align: center; margin-bottom: 0.5rem; }
+
+.divider { text-align: center; color: var(--text-3); font-size: 0.75rem; margin: 0.75rem 0; position: relative; }
+.divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 30%; height: 1px; background: var(--border); }
+.divider::before { left: 10%; } .divider::after { right: 10%; }
+
+.open-races { width: min(500px, calc(100vw - 2rem)); margin: 0 auto; }
+.race-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0.6rem 0.8rem; margin-bottom: 0.4rem; }
+.race-item-info { font-size: 0.8rem; color: var(--text-2); }
+.race-item-info strong { color: var(--text-1); }
+.race-item-meta { font-size: 0.68rem; color: var(--text-3); }
+.join-btn { background: var(--green); color: #fff; border: none; border-radius: var(--r-sm); padding: 0.35rem 0.8rem; font-weight: 600; font-size: 0.75rem; cursor: pointer; }
+.join-btn:hover { background: #6bb032; }
+.no-races { text-align: center; color: var(--text-3); font-size: 0.8rem; padding: 1rem; }
+
+/* Waiting room */
+.room { text-align: center; padding: 1.5rem; width: min(400px, calc(100vw - 2rem)); margin: 0 auto; }
+.room h2 { font-size: 1rem; color: var(--text-1); margin-bottom: 0.6rem; }
+.room-count { color: var(--text-3); font-size: 0.8rem; margin-bottom: 0.8rem; }
+.room-players { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-bottom: 1rem; }
+.room-player {
+    background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 0.4rem 0.8rem; font-size: 0.8rem; color: var(--text-1); font-weight: 600;
+    display: flex; align-items: center; gap: 0.4rem;
+}
+.room-player img { width: 20px; height: 20px; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+.room-dots { animation: pulse 1.5s infinite; font-size: 1.2rem; color: var(--green); margin-bottom: 0.6rem; }
+.room-btns { display: flex; gap: 0.5rem; justify-content: center; }
+.room-btns button { padding: 0.5rem 1.2rem; border: none; border-radius: var(--r-md); font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+.start-btn { background: var(--green); color: #fff; }
+.start-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.cancel-btn { background: var(--bg-elevated); color: var(--text-2); }
+</style>
+</head>
+<body>
+
+<div id="app">
+    {% if user_id %}
+        {% include '_nav.html' %}
+    {% else %}
+        <div class="lobby-back"><a href="/">Home</a></div>
+    {% endif %}
+    <div class="lobby-header">
+        <h1>Puzzle Race</h1>
+        <p>Race your friends to solve puzzles fastest</p>
+    </div>
+
+    <!-- Step 1: Choose player -->
+    <div id="step-player" class="step active">
+        <div class="step-title">Choose your player</div>
+        <div class="player-grid" id="player-grid"></div>
+    </div>
+
+    <!-- Step 2: Create or Join -->
+    <div id="step-lobby" class="step">
+        <div class="step-title">Playing as <strong id="my-name"></strong></div>
+        <div class="create-form">
+            <div class="rules-text">3 lives &middot; Wrong move = lose a life &middot; Most correct wins</div>
+            <div class="form-row">
+                <label>Players</label>
+                <select id="opt-players">
+                    <option value="2">2 players</option>
+                    <option value="3">3 players</option>
+                    <option value="4" selected>4 players</option>
+                    <option value="5">5 players</option>
+                    <option value="6">6 players</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label>Time limit</label>
+                <select id="opt-time">
+                    <option value="180">3 minutes</option>
+                    <option value="300" selected>5 minutes</option>
+                    <option value="600">10 minutes</option>
+                    <option value="0">No limit</option>
+                </select>
+            </div>
+            <button class="create-btn" id="create-btn">Create Race</button>
+        </div>
+        <div class="divider">or join an open race</div>
+        <div class="open-races" id="open-races"><div class="no-races">No open races</div></div>
+    </div>
+
+    <!-- Step 3: Waiting room -->
+    <div id="step-room" class="step">
+        <div class="room">
+            <h2>Race Lobby</h2>
+            <div class="room-count" id="room-count">0 / 2 players</div>
+            <div class="room-players" id="room-players"></div>
+            <div class="room-dots">...</div>
+            <div class="room-btns">
+                <button class="start-btn" id="start-btn" disabled>Start Race</button>
+                <button class="cancel-btn" id="leave-btn">Leave</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const PIECES = ['wN','bN','wR','bR','wB','bB'];
+let myId = null, myName = '', raceId = null, isCreator = false;
+let pollTimer = null, roomTimer = null;
+
+const presetUserId = {{ user_id or 'null' }};
+
+async function boot() {
+    const users = await (await fetch('/api/users')).json();
+    const grid = document.getElementById('player-grid');
+    for (const u of users) {
+        const btn = document.createElement('div');
+        btn.className = 'player-btn';
+        btn.innerHTML = `${u.name}<div class="elo">${Math.round(u.elo)} elo</div>`;
+        btn.onclick = () => selectPlayer(u);
+        grid.appendChild(btn);
+    }
+    // Auto-select if user was passed via URL
+    if (presetUserId) {
+        const me = users.find(u => u.id === presetUserId);
+        if (me) {
+            const navP = document.getElementById('nav-player');
+            if (navP) navP.textContent = me.name;
+            selectPlayer(me);
+        }
+    }
+}
+
+function selectPlayer(u) {
+    myId = u.id; myName = u.name;
+    document.getElementById('my-name').textContent = u.name;
+    showStep('step-lobby');
+    startLobbyPoll();
+}
+
+function showStep(id) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// ---- Create ----
+document.getElementById('create-btn').onclick = async () => {
+    const maxP = parseInt(document.getElementById('opt-players').value);
+    const timeLimit = parseInt(document.getElementById('opt-time').value);
+    const res = await fetch('/api/race/create', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ player_id: myId, max_players: maxP, time_limit_secs: timeLimit }),
+    });
+    const data = await res.json();
+    raceId = data.race_id;
+    isCreator = true;
+    stopLobbyPoll();
+    showStep('step-room');
+    startRoomPoll();
+};
+
+// ---- Start ----
+document.getElementById('start-btn').onclick = async () => {
+    await fetch(`/api/race/${raceId}/start`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ player_id: myId }),
+    });
+};
+
+// ---- Leave / Cancel ----
+document.getElementById('leave-btn').onclick = async () => {
+    stopRoomPoll();
+    if (isCreator) {
+        await fetch(`/api/race/${raceId}/cancel`, { method: 'POST' });
+    } else {
+        await fetch(`/api/race/${raceId}/leave`, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ player_id: myId }),
+        });
+    }
+    raceId = null; isCreator = false;
+    showStep('step-lobby');
+    startLobbyPoll();
+};
+
+// ---- Lobby poll ----
+function startLobbyPoll() { stopLobbyPoll(); refreshOpen(); pollTimer = setInterval(refreshOpen, 2000); }
+function stopLobbyPoll() { clearInterval(pollTimer); pollTimer = null; }
+
+async function refreshOpen() {
+    const races = await (await fetch('/api/races/open')).json();
+    const el = document.getElementById('open-races');
+    const joinable = races.filter(r => r.creator_id !== myId);
+    if (!joinable.length) { el.innerHTML = '<div class="no-races">No open races — create one!</div>'; return; }
+    el.innerHTML = '';
+    for (const r of joinable) {
+        const item = document.createElement('div');
+        item.className = 'race-item';
+        const timeStr = r.time_limit_secs > 0 ? (r.time_limit_secs / 60) + ' min' : 'No limit';
+        item.innerHTML = `
+            <div>
+                <div class="race-item-info"><strong>${r.creator_name}</strong>'s race</div>
+                <div class="race-item-meta">${r.player_count}/${r.max_players} players &middot; ${timeStr}</div>
+            </div>
+            <button class="join-btn">Join</button>`;
+        item.querySelector('.join-btn').onclick = () => joinRace(r.race_id);
+        el.appendChild(item);
+    }
+}
+
+async function joinRace(id) {
+    const res = await fetch(`/api/race/${id}/join`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ player_id: myId }),
+    });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    raceId = id; isCreator = false;
+    stopLobbyPoll();
+    showStep('step-room');
+    startRoomPoll();
+}
+
+// ---- Room poll ----
+function startRoomPoll() { refreshRoom(); roomTimer = setInterval(refreshRoom, 1000); }
+function stopRoomPoll() { clearInterval(roomTimer); roomTimer = null; }
+
+async function refreshRoom() {
+    const data = await (await fetch(`/api/race/${raceId}`)).json();
+    if (data.status === 'active') {
+        stopRoomPoll();
+        window.location = `/race/${raceId}/play/${myId}`;
+        return;
+    }
+    if (data.status === 'cancelled') {
+        stopRoomPoll();
+        raceId = null; isCreator = false;
+        showStep('step-lobby'); startLobbyPoll();
+        return;
+    }
+    const players = data.players || [];
+    const max = data.max_players;
+    document.getElementById('room-count').textContent = `${players.length} / ${max} players`;
+
+    const container = document.getElementById('room-players');
+    container.innerHTML = '';
+    for (const p of players) {
+        const el = document.createElement('div');
+        el.className = 'room-player';
+        el.innerHTML = `<img src="/static/pieces/${PIECES[p.slot]}.svg">${p.name}`;
+        container.appendChild(el);
+    }
+
+    const startBtn = document.getElementById('start-btn');
+    startBtn.style.display = isCreator ? '' : 'none';
+    startBtn.disabled = players.length < 2;
+    document.getElementById('leave-btn').textContent = isCreator ? 'Cancel' : 'Leave';
+}
+
+boot();
+</script>
+</body>
+</html>

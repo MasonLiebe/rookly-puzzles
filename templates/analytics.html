@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rookly Puzzles - Stats</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+/* ---- Analytics-specific styles ---- */
+/* Stats summary */
+.stats-row {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.2rem;
+}
+.stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 0.6rem 1rem;
+    text-align: center;
+    min-width: 80px;
+}
+.stat-val {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--text-1);
+    font-variant-numeric: tabular-nums;
+}
+.stat-label {
+    font-size: 0.65rem;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+/* Sections */
+.section {
+    width: min(600px, calc(100vw - 2rem));
+    margin-bottom: 1.5rem;
+}
+.section-title {
+    font-size: 0.8rem;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+/* Calendar heatmap */
+#calendar {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-elevated) transparent;
+}
+#calendar::-webkit-scrollbar { height: 3px; }
+#calendar::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 2px; }
+
+.cal-week {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.cal-day {
+    width: 11px; height: 11px;
+    border-radius: 2px;
+    background: var(--bg-elevated);
+}
+.cal-day[data-level="1"] { background: #0e4429; }
+.cal-day[data-level="2"] { background: #006d32; }
+.cal-day[data-level="3"] { background: #26a641; }
+.cal-day[data-level="4"] { background: #39d353; }
+
+.cal-day[title] { cursor: default; }
+
+.cal-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+.cal-label {
+    height: 11px;
+    font-size: 0.55rem;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.cal-months {
+    display: flex;
+    gap: 2px;
+    margin-left: 18px;
+    margin-bottom: 3px;
+}
+.cal-month {
+    font-size: 0.55rem;
+    color: var(--text-3);
+    min-width: 11px;
+}
+
+/* Elo chart */
+#elo-chart-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 1rem;
+    overflow: hidden;
+}
+#elo-chart { width: 100%; height: 180px; }
+.elo-empty { color: var(--text-3); font-size: 0.8rem; text-align: center; padding: 2rem; }
+
+/* Theme breakdown */
+.theme-list { display: flex; flex-direction: column; gap: 0.35rem; }
+.theme-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+.theme-name {
+    min-width: 110px;
+    color: var(--text-2);
+    font-weight: 500;
+}
+.theme-bar-bg {
+    flex: 1;
+    height: 8px;
+    background: var(--bg-elevated);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.theme-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+.theme-bar.good { background: var(--green); }
+.theme-bar.mid  { background: var(--amber); }
+.theme-bar.low  { background: var(--red); }
+.theme-pct {
+    min-width: 32px;
+    text-align: right;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.7rem;
+}
+.theme-pct.good { color: var(--green-light); }
+.theme-pct.mid  { color: var(--amber-light); }
+.theme-pct.low  { color: var(--red-light); }
+.theme-count { min-width: 24px; color: var(--text-3); font-size: 0.65rem; }
+</style>
+</head>
+<body data-user-id="{{ user_id }}">
+
+<div id="app">
+    {% include '_nav.html' %}
+
+    <div class="stats-row" id="stats-row"></div>
+
+    <div class="section">
+        <div class="section-title">Puzzle Activity</div>
+        <div id="cal-months" class="cal-months"></div>
+        <div id="calendar"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Rating Over Time</div>
+        <div id="elo-chart-container">
+            <svg id="elo-chart"></svg>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Theme Accuracy</div>
+        <div id="theme-breakdown" class="theme-list"></div>
+    </div>
+</div>
+
+<script>
+const userId = {{ user_id }};
+
+async function boot() {
+    const [user, analytics, calData] = await Promise.all([
+        fetch(`/api/user/${userId}`).then(r => r.json()),
+        fetch(`/api/user/${userId}/analytics`).then(r => r.json()),
+        fetch(`/api/user/${userId}/calendar`).then(r => r.json()),
+    ]);
+
+    const nameEl = document.getElementById('nav-player');
+    if (nameEl) nameEl.textContent = user.name;
+    document.title = `${user.name} - Rookly Stats`;
+
+    renderStats(user);
+    renderCalendar(calData.calendar);
+    renderEloChart(analytics.elo_history);
+    renderThemes(analytics.theme_stats);
+}
+
+function renderStats(u) {
+    const pct = u.games_played > 0 ? Math.round(100 * u.puzzles_solved / u.games_played) : 0;
+    const items = [
+        [Math.round(u.elo), 'Rating'],
+        [u.games_played, 'Played'],
+        [pct + '%', 'Solved'],
+        [u.current_streak, 'Streak'],
+    ];
+    const row = document.getElementById('stats-row');
+    for (const [val, label] of items) {
+        const card = document.createElement('div');
+        card.className = 'stat-card';
+        card.innerHTML = `<div class="stat-val">${val}</div><div class="stat-label">${label}</div>`;
+        row.appendChild(card);
+    }
+}
+
+function renderCalendar(calMap) {
+    const container = document.getElementById('calendar');
+    const monthsEl = document.getElementById('cal-months');
+
+    // Build labels column
+    const labels = document.createElement('div');
+    labels.className = 'cal-labels';
+    const dayNames = ['', 'Mon', '', 'Wed', '', 'Fri', ''];
+    for (const d of dayNames) {
+        const el = document.createElement('div');
+        el.className = 'cal-label';
+        el.textContent = d;
+        labels.appendChild(el);
+    }
+    container.appendChild(labels);
+
+    // Find the start: 52 weeks ago on a Sunday
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - 363 - start.getDay());
+
+    const monthPositions = [];
+    let lastMonth = -1;
+
+    for (let w = 0; w < 53; w++) {
+        const week = document.createElement('div');
+        week.className = 'cal-week';
+
+        for (let d = 0; d < 7; d++) {
+            const date = new Date(start);
+            date.setDate(start.getDate() + w * 7 + d);
+
+            if (date > today) {
+                const empty = document.createElement('div');
+                empty.className = 'cal-day';
+                empty.style.opacity = '0';
+                week.appendChild(empty);
+                continue;
+            }
+
+            const key = date.toISOString().slice(0, 10);
+            const entry = calMap[key];
+            const total = entry ? entry.total : 0;
+
+            const level = total === 0 ? 0 : total <= 2 ? 1 : total <= 5 ? 2 : total <= 9 ? 3 : 4;
+
+            const cell = document.createElement('div');
+            cell.className = 'cal-day';
+            cell.dataset.level = level;
+            if (total > 0) {
+                cell.title = `${key}: ${total} puzzle${total !== 1 ? 's' : ''}`;
+            }
+            week.appendChild(cell);
+
+            // Track month labels
+            if (date.getMonth() !== lastMonth && d === 0) {
+                lastMonth = date.getMonth();
+                monthPositions.push({ month: date.toLocaleString('en', {month:'short'}), week: w });
+            }
+        }
+        container.appendChild(week);
+    }
+
+    // Render month labels
+    let prevWeek = 0;
+    for (const { month, week } of monthPositions) {
+        const spacer = (week - prevWeek) * 13; // 11px cell + 2px gap
+        const el = document.createElement('span');
+        el.className = 'cal-month';
+        el.style.marginLeft = (prevWeek === 0 ? 0 : spacer - 26) + 'px';
+        el.textContent = month;
+        monthsEl.appendChild(el);
+        prevWeek = week;
+    }
+}
+
+function renderEloChart(eloHistory) {
+    const svg = document.getElementById('elo-chart');
+    if (!eloHistory.length) {
+        svg.parentElement.innerHTML = '<div class="elo-empty">Play some puzzles to see your rating chart!</div>';
+        return;
+    }
+
+    const W = svg.clientWidth || 500;
+    const H = 180;
+    const pad = { top: 20, right: 10, bottom: 25, left: 40 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    const elos = eloHistory.map(e => e.elo);
+    const minE = Math.floor(Math.min(...elos) / 50) * 50;
+    const maxE = Math.ceil(Math.max(...elos) / 50) * 50;
+    const range = maxE - minE || 50;
+
+    // Grid lines
+    let gridHTML = '';
+    for (let v = minE; v <= maxE; v += Math.max(50, Math.round(range / 4 / 50) * 50)) {
+        const y = pad.top + plotH - ((v - minE) / range) * plotH;
+        gridHTML += `<line x1="${pad.left}" x2="${W - pad.right}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+        gridHTML += `<text x="${pad.left - 5}" y="${y + 3}" text-anchor="end" fill="var(--text-3)" font-size="9">${v}</text>`;
+    }
+
+    // Plot line
+    const pts = eloHistory.map((e, i) => {
+        const x = pad.left + (i / (eloHistory.length - 1 || 1)) * plotW;
+        const y = pad.top + plotH - ((e.elo - minE) / range) * plotH;
+        return `${x},${y}`;
+    });
+
+    // Gradient fill
+    const firstX = pad.left;
+    const lastX = pad.left + plotW;
+    const bottomY = pad.top + plotH;
+
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = `
+        <defs>
+            <linearGradient id="eloGrad" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="var(--green)" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="var(--green)" stop-opacity="0.02"/>
+            </linearGradient>
+        </defs>
+        ${gridHTML}
+        <polygon points="${firstX},${bottomY} ${pts.join(' ')} ${lastX},${bottomY}"
+                 fill="url(#eloGrad)"/>
+        <polyline points="${pts.join(' ')}"
+                  fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linejoin="round"/>
+    `;
+}
+
+function renderThemes(themeStats) {
+    const container = document.getElementById('theme-breakdown');
+    if (!themeStats.length) {
+        container.innerHTML = '<div class="elo-empty">Theme data will appear after solving puzzles.</div>';
+        return;
+    }
+
+    for (const t of themeStats.slice(0, 20)) {
+        const pct = t.total > 0 ? Math.round(100 * t.correct / t.total) : 0;
+        const cls = pct >= 70 ? 'good' : pct >= 40 ? 'mid' : 'low';
+        const name = t.theme.replace(/([A-Z])/g, ' $1').trim();
+
+        const row = document.createElement('div');
+        row.className = 'theme-row';
+        row.innerHTML = `
+            <span class="theme-name">${name}</span>
+            <div class="theme-bar-bg"><div class="theme-bar ${cls}" style="width:${pct}%"></div></div>
+            <span class="theme-pct ${cls}">${pct}%</span>
+            <span class="theme-count">${t.total}</span>
+        `;
+        container.appendChild(row);
+    }
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<nav id="top-nav">
+    <a href="/" class="nav-home" title="Switch player">
+        <span class="nav-player-name" id="nav-player">Player</span>
+    </a>
+    <div class="nav-links">
+        <a href="/play/{{ user_id }}" class="nav-link {{ 'active' if page == 'practice' else '' }}">Practice</a>
+        <a href="/blitz/{{ user_id }}" class="nav-link {{ 'active' if page == 'blitz' else '' }}">Blitz</a>
+        <a href="/race?user={{ user_id }}" class="nav-link {{ 'active' if page == 'race' else '' }}">Race</a>
+        <a href="/games/{{ user_id }}" class="nav-link {{ 'active' if page == 'games' else '' }}">Games</a>
+        <a href="/review/{{ user_id }}" class="nav-link {{ 'active' if page == 'review' else '' }}">Review</a>
+        <a href="/analytics/{{ user_id }}" class="nav-link {{ 'active' if page == 'stats' else '' }}">Stats</a>
+    </div>
+</nav>
