@@ -136,6 +136,54 @@
 .reveal-verdict.wrong { color: var(--red-light); }
 .reveal-explain { font-size: 0.78rem; color: var(--text-3); line-height: 1.4; margin-bottom: 0.5rem; }
 .reveal-explain .eval { font-weight: 700; color: var(--text-2); }
+
+/* Eval bar */
+.eval-bar-wrap {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin: 0.6rem auto 0.5rem; width: 80%; max-width: 300px;
+}
+.eval-bar-label { font-size: 0.65rem; font-weight: 700; min-width: 36px; text-align: center; font-variant-numeric: tabular-nums; }
+.eval-bar-label.good { color: var(--green-light); }
+.eval-bar-label.bad { color: var(--red-light); }
+.eval-bar {
+    flex: 1; height: 14px; border-radius: 7px; overflow: hidden;
+    background: var(--bg-elevated); position: relative; border: 1px solid var(--border);
+}
+.eval-bar-fill {
+    position: absolute; top: 0; left: 0; height: 100%;
+    border-radius: 7px; transition: width 0.5s ease-out;
+}
+.eval-bar-fill.white-fill { background: #e8e8e8; }
+.eval-arrow {
+    position: absolute; top: -1px; height: calc(100% + 2px); width: 2px;
+    background: var(--red-light); transition: left 0.5s ease-out;
+}
+
+/* Move comparison rows */
+.move-compare {
+    display: flex; flex-direction: column; gap: 0.3rem;
+    margin: 0.5rem auto 0.6rem; width: 90%; max-width: 320px;
+}
+.move-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.35rem 0.6rem; border-radius: var(--r-sm);
+    font-size: 0.78rem;
+}
+.move-row.best-row { background: rgba(94, 158, 47, 0.12); }
+.move-row.yours-row { background: rgba(204, 68, 68, 0.1); }
+.move-row .move-icon {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.65rem; font-weight: 800; color: #fff;
+}
+.move-row.best-row .move-icon { background: var(--green); }
+.move-row.yours-row .move-icon { background: var(--red); }
+.move-row .move-san { font-weight: 700; color: var(--text-1); }
+.move-row .move-desc { color: var(--text-3); font-size: 0.72rem; flex: 1; }
+.move-row .move-eval { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; }
+.move-row.best-row .move-eval { color: var(--green-light); }
+.move-row.yours-row .move-eval { color: var(--red-light); }
+
 .next-btn {
     background: var(--green); color: #fff; border: none; border-radius: var(--r-md);
     padding: 0.5rem 1.5rem; font-weight: 600; font-size: 0.82rem; cursor: pointer;
@@ -562,6 +610,52 @@ function uciToSan(game, uci) {
     }
 }
 
+function getMoveDetail(game, uci) {
+    // Get SAN and describe what the move does
+    const from = uci.substring(0, 2);
+    const to = uci.substring(2, 4);
+    const promo = uci.length > 4 ? uci[4] : undefined;
+    const moves = game.moves({ verbose: true });
+    const match = moves.find(m => m.from === from && m.to === to && (!promo || m.promotion === promo));
+    if (!match) return { san: uci, desc: '' };
+
+    let desc = '';
+    const pieceNames = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+    const pieceName = pieceNames[match.piece] || match.piece;
+
+    if (match.san.includes('#')) {
+        desc = 'Checkmate';
+    } else if (match.san.includes('+')) {
+        if (match.captured) {
+            desc = `Captures ${pieceNames[match.captured]} with check`;
+        } else {
+            desc = `${pieceName.charAt(0).toUpperCase() + pieceName.slice(1)} gives check`;
+        }
+    } else if (match.captured) {
+        desc = `${pieceName.charAt(0).toUpperCase() + pieceName.slice(1)} takes ${pieceNames[match.captured]}`;
+    } else if (match.flags.includes('k') || match.flags.includes('q')) {
+        desc = 'Castles';
+    } else {
+        desc = `${pieceName.charAt(0).toUpperCase() + pieceName.slice(1)} to ${to}`;
+    }
+
+    return { san: match.san, desc };
+}
+
+function formatEval(cp) {
+    if (cp >= 10000) return 'M';
+    if (cp <= -10000) return '-M';
+    const v = (cp / 100).toFixed(1);
+    return cp > 0 ? `+${v}` : v;
+}
+
+function evalToBarPct(cp) {
+    // Map centipawns to 0-100% (white advantage). Sigmoid-ish curve.
+    // 0cp = 50%, +-500cp ≈ 90%/10%, +-1000cp ≈ 97%/3%
+    const clamped = Math.max(-1000, Math.min(1000, cp));
+    return 50 + 50 * (2 / (1 + Math.exp(-clamped / 200)) - 1);
+}
+
 // ---- Pick choice ----
 async function pickChoice(idx) {
     const chosen = shuffledMoves[idx];
@@ -595,36 +689,68 @@ async function pickChoice(idx) {
     arrowEls[bestIdx].setAttribute('class', 'arrow-best');
     arrowEls[yoursIdx].setAttribute('class', 'arrow-yours');
 
-    // Show reveal card
-    const revealCard = document.getElementById('reveal-card');
-    const verdict = document.getElementById('reveal-verdict');
-    const explain = document.getElementById('reveal-explain');
-
-    if (isCorrect) {
-        revealCard.className = 'reveal-card correct-card';
-        verdict.className = 'reveal-verdict correct';
-        verdict.textContent = 'Correct!';
-    } else {
-        revealCard.className = 'reveal-card wrong-card';
-        verdict.className = 'reveal-verdict wrong';
-        verdict.textContent = 'Wrong!';
-    }
-
+    // Build reveal content
     const m = currentMoment;
-    const evalBefore = (m.eval_before / 100).toFixed(1);
-    const evalAfter = (m.eval_after / 100).toFixed(1);
-    const evalBest = (m.eval_best / 100).toFixed(1);
-
     const game = new Chess(m.fen);
-    const bestSan = uciToSan(game, m.best_move);
-    const yourSan = uciToSan(game, m.player_move);
+    const bestDetail = getMoveDetail(game, m.best_move);
+    const yourDetail = getMoveDetail(game, m.player_move);
 
-    explain.innerHTML = `
-        You played <span class="eval" style="color:var(--red-light)">${yourSan}</span>
-        (eval: ${evalBefore} &rarr; ${evalAfter})<br>
-        Best was <span class="eval" style="color:var(--green-light)">${bestSan}</span>
-        (eval: ${evalBefore} &rarr; ${evalBest})
+    const revealCard = document.getElementById('reveal-card');
+    const verdictCls = isCorrect ? 'correct' : 'wrong';
+    const cardCls = isCorrect ? 'correct-card' : 'wrong-card';
+
+    const evalBeforeStr = formatEval(m.eval_before);
+    const evalAfterStr = formatEval(m.eval_after);
+    const evalBestStr = formatEval(m.eval_best);
+
+    // Eval bar positions (from player's perspective, so flip if black)
+    const flipSign = m.player_color === 'black' ? -1 : 1;
+    const barBefore = evalToBarPct(m.eval_before * flipSign);
+    const barAfter = evalToBarPct(m.eval_after * flipSign);
+
+    revealCard.className = `reveal-card ${cardCls}`;
+    revealCard.innerHTML = `
+        <div class="reveal-verdict ${verdictCls}">${isCorrect ? 'Correct!' : 'Wrong!'}</div>
+
+        <div class="eval-bar-wrap">
+            <div class="eval-bar-label good">${evalBeforeStr}</div>
+            <div class="eval-bar" id="eval-bar">
+                <div class="eval-bar-fill white-fill" id="eval-fill" style="width: ${barBefore}%"></div>
+                <div class="eval-arrow" id="eval-arrow" style="display:none"></div>
+            </div>
+            <div class="eval-bar-label bad" id="eval-after-label">${evalAfterStr}</div>
+        </div>
+
+        <div class="move-compare">
+            <div class="move-row best-row">
+                <div class="move-icon">&#10003;</div>
+                <span class="move-san">${bestDetail.san}</span>
+                <span class="move-desc">${bestDetail.desc}</span>
+                <span class="move-eval">${evalBestStr}</span>
+            </div>
+            <div class="move-row yours-row">
+                <div class="move-icon">&#10007;</div>
+                <span class="move-san">${yourDetail.san}</span>
+                <span class="move-desc">${yourDetail.desc}</span>
+                <span class="move-eval">${evalAfterStr}</span>
+            </div>
+        </div>
+
+        <button class="next-btn" id="next-btn">Next Position</button>
     `;
+
+    // Animate eval bar drop after a short delay
+    setTimeout(() => {
+        const fill = document.getElementById('eval-fill');
+        const arrow = document.getElementById('eval-arrow');
+        if (fill) {
+            arrow.style.display = '';
+            arrow.style.left = barBefore + '%';
+            fill.style.width = barAfter + '%';
+            // Animate arrow to show where it dropped from
+            setTimeout(() => { arrow.style.left = barAfter + '%'; }, 50);
+        }
+    }, 200);
 
     document.getElementById('choice-row').classList.add('hidden');
     document.getElementById('reveal-section').classList.remove('hidden');

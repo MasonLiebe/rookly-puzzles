@@ -263,15 +263,15 @@ import datetime
 import shutil
 STOCKFISH_PATH = shutil.which('stockfish') or '/opt/homebrew/bin/stockfish'
 ANALYSIS_DEPTH = 13
-BLUNDER_THRESHOLD = 150   # centipawns drop for "blunder"
-MISTAKE_THRESHOLD = 80    # centipawns drop for "mistake"
+BLUNDER_THRESHOLD = 400   # centipawns drop for "blunder" (~losing a minor piece)
+MISTAKE_THRESHOLD = 200   # centipawns drop for "mistake" (~2 pawns, clearly tactical)
 # Only flag moments that change the position's character:
 # - Position was competitive (eval_before between -300 and +600)
-# - After the move, position is no longer good (eval_after <= +100)
-# This filters out "mate in 6 → +8" noise and already-lost positions.
+# - After the move, position is actually worse (eval_after <= -50)
+# This filters out subtle positional errors and "mate in 6 → +8" noise.
 EVAL_BEFORE_MAX = 600     # skip if already crushing (still winning after mistake)
 EVAL_BEFORE_MIN = -300    # skip if already lost
-EVAL_AFTER_MAX = 100      # after move, position must not still be comfortably winning
+EVAL_AFTER_MAX = -50      # after move, position must actually be bad
 
 
 def _analyze_game(game_row_id, user_id, pgn_text, source_username):
