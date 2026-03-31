@@ -24,6 +24,18 @@
 .drill-card:hover { border-color: var(--green); transform: translateY(-2px); }
 .drill-card .drill-sub { font-size: 0.65rem; color: var(--text-3); font-weight: 400; margin-top: 0.15rem; }
 
+/* Leaderboard inside drill card */
+.drill-lb { margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.4rem; }
+.drill-lb-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.68rem; padding: 0.12rem 0; color: var(--text-3);
+}
+.drill-lb-row .lb-pos { min-width: 16px; color: var(--text-3); font-weight: 600; }
+.drill-lb-row .lb-name { flex: 1; text-align: left; padding-left: 0.3rem; }
+.drill-lb-row .lb-score { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2); }
+.drill-lb-row.me .lb-name, .drill-lb-row.me .lb-score { color: var(--green-light); }
+.drill-lb-empty { font-size: 0.62rem; color: var(--text-3); font-style: italic; margin-top: 0.2rem; }
+
 /* ---- Blitz HUD ---- */
 #blitz-hud {
     display: flex; align-items: center; justify-content: center;

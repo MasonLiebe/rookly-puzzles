@@ -58,11 +58,32 @@ async function boot() {
     setOnComplete(onSolved);
     setOnWrongMove(onFailed);
 
-    // Render drill picker
+    // Fetch leaderboards then render drill picker
+    const lbData = await (await fetch('/api/blitz/leaderboards')).json();
+
     for (const [key, drill] of Object.entries(DRILLS)) {
         const card = document.createElement('div');
         card.className = 'drill-card';
-        card.innerHTML = `${drill.label}<div class="drill-sub">60 seconds</div>`;
+
+        let lbHtml = '';
+        const scores = lbData[key];
+        if (scores && scores.length > 0) {
+            lbHtml = '<div class="drill-lb">';
+            for (let i = 0; i < Math.min(scores.length, 3); i++) {
+                const s = scores[i];
+                const me = s.user_id === userId ? ' me' : '';
+                lbHtml += `<div class="drill-lb-row${me}">
+                    <span class="lb-pos">${i + 1}.</span>
+                    <span class="lb-name">${s.name}</span>
+                    <span class="lb-score">${s.best}</span>
+                </div>`;
+            }
+            lbHtml += '</div>';
+        } else {
+            lbHtml = '<div class="drill-lb-empty">No scores yet</div>';
+        }
+
+        card.innerHTML = `${drill.label}<div class="drill-sub">60 seconds</div>${lbHtml}`;
         card.onclick = () => startDrill(key);
         drillGrid.appendChild(card);
     }
