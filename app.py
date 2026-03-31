@@ -260,7 +260,8 @@ import chess.engine
 import io
 import datetime
 
-STOCKFISH_PATH = '/opt/homebrew/bin/stockfish'
+import shutil
+STOCKFISH_PATH = shutil.which('stockfish') or '/opt/homebrew/bin/stockfish'
 ANALYSIS_DEPTH = 13
 BLUNDER_THRESHOLD = 150   # centipawns drop for "blunder"
 MISTAKE_THRESHOLD = 80    # centipawns drop for "mistake"
