@@ -110,6 +110,11 @@
     width: var(--board-size); margin: 0 auto 0.5rem; line-height: 1.5;
 }
 .moment-info .game-label { color: var(--text-2); font-weight: 600; }
+.moment-info .game-link {
+    color: var(--green); text-decoration: none; font-weight: 600;
+    font-size: 0.65rem; opacity: 0.8; transition: opacity 0.12s;
+}
+.moment-info .game-link:hover { opacity: 1; text-decoration: underline; }
 .moment-info .move-num { color: var(--text-2); }
 .moment-info .moment-tag {
     display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--r-sm);
@@ -463,11 +468,23 @@ function showMoment() {
     const players = m.player_color === 'white'
         ? `${m.white_name} vs ${m.black_name}`
         : `${m.black_name} vs ${m.white_name}`;
+
+    let gameUrl = '';
+    if (m.source === 'lichess' && m.source_game_id) {
+        gameUrl = `https://lichess.org/${m.source_game_id}#${m.move_number * 2 - (m.player_color === 'white' ? 1 : 0)}`;
+    } else if (m.source === 'chesscom' && m.source_game_id) {
+        gameUrl = `https://www.chess.com/game/live/${m.source_game_id}`;
+    }
+    const linkHtml = gameUrl
+        ? ` <a href="${gameUrl}" target="_blank" class="game-link">View game ↗</a>`
+        : '';
+
     info.innerHTML = `
         <span class="game-label">${players}</span> &middot;
         <span class="move-num">Move ${m.move_number}</span> &middot;
         <span class="moment-tag ${tagCls}">${tagLabel}</span> &middot;
         <span>Eval drop: ${(m.eval_drop / 100).toFixed(1)}</span>
+        ${linkHtml}
     `;
 
     // Render board (flipped if player is black)

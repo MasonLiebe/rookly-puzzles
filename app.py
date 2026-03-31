@@ -539,7 +539,8 @@ def get_moments(user_id):
             where += " AND gm.moment_type = 'blunder'"
 
         rows = db.execute(f"""
-            SELECT gm.*, ig.white_name, ig.black_name, ig.source, ig.opening
+            SELECT gm.*, ig.white_name, ig.black_name, ig.source, ig.opening,
+                   ig.game_id AS source_game_id
             FROM game_moments gm
             JOIN imported_games ig ON ig.id = gm.game_id
             WHERE {where}
